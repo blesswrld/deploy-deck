@@ -1,0 +1,20 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Prisma будет брать строку подключения из .env
+}
+
+// Модель пользователя. Здесь будут храниться данные о тех, кто регистрируется.
+model User {
+  id        String   @id @default(cuid()) // Уникальный ID, генерируется автоматически
+  email     String   @unique // Email должен быть уникальным
+  password  String   // Здесь будет храниться ЗАХЭШИРОВАННЫЙ пароль
+  createdAt DateTime @default(now()) // Дата создания
+  updatedAt DateTime @updatedAt // Дата последнего обновления
+}

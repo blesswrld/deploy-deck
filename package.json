@@ -1,0 +1,13 @@
+{
+    "name": "deploy-deck",
+    "private": true,
+    "scripts": {
+        "build": "turbo build",
+        "dev": "turbo dev --filter=web --filter=api --parallel",
+        "lint": "turbo lint"
+    },
+    "devDependencies": {
+        "turbo": "^2.0.5"
+    },
+    "packageManager": "pnpm@8.6.1"
+}
