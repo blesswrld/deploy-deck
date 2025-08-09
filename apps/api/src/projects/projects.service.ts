@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -27,17 +31,42 @@ export class ProjectsService {
     });
   }
 
-  findOne(id: string) {
-    return `This action returns a #${id} project`;
+  async findOne(id: string, userId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project with ID "${id}" not found`);
+    }
+
+    if (project.userId !== userId) {
+      throw new ForbiddenException(
+        `You do not have permission to access this project`,
+      );
+    }
+
+    return project;
   }
 
-  // И здесь: было `id: number`
-  update(id: string, updateProjectDto: UpdateProjectDto) {
-    return `This action updates a #${id} project`;
+  async update(id: string, updateProjectDto: UpdateProjectDto, userId: string) {
+    // Сначала проверяем, что проект существует и принадлежит пользователю
+    await this.findOne(id, userId);
+
+    // Если проверка прошла, обновляем проект
+    return this.prisma.project.update({
+      where: { id },
+      data: updateProjectDto,
+    });
   }
 
-  // И здесь: было `id: number`
-  remove(id: string) {
-    return `This action removes a #${id} project`;
+  async remove(id: string, userId: string) {
+    // Сначала проверяем, что проект существует и принадлежит пользователю
+    await this.findOne(id, userId);
+
+    // Если проверка прошла, удаляем проект
+    return this.prisma.project.delete({
+      where: { id },
+    });
   }
 }
