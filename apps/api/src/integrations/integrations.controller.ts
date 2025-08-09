@@ -36,4 +36,15 @@ export class IntegrationsController {
       projectId,
     );
   }
+
+  @Get('vercel/deployments/:deploymentId/logs')
+  getVercelDeploymentLogs(
+    @GetUser() user: User,
+    @Param('deploymentId') deploymentId: string,
+  ) {
+    return this.integrationsService.getVercelDeploymentLogs(
+      user.id,
+      deploymentId,
+    );
+  }
 }

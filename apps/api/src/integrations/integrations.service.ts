@@ -189,4 +189,37 @@ export class IntegrationsService {
       return [];
     }
   }
+
+  async getVercelDeploymentLogs(userId: string, deploymentId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.vercelApiToken) {
+      throw new UnauthorizedException('Vercel account not connected.');
+    }
+
+    const vercelToken = this.encryptionService.decrypt(user.vercelApiToken);
+
+    try {
+      // Vercel API для получения логов
+      const response = await axios.get(
+        `https://api.vercel.com/v2/deployments/${deploymentId}/events`,
+        {
+          headers: {
+            Authorization: `Bearer ${vercelToken}`,
+          },
+          // Логи могут быть большими, Vercel отдает их как text/plain
+          responseType: 'text',
+        },
+      );
+
+      return { logs: response.data };
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 403)
+          throw new UnauthorizedException('Invalid Vercel API token.');
+        if (error.response.status === 404)
+          throw new NotFoundException('Deployment not found.');
+      }
+      throw new Error('Failed to fetch deployment logs from Vercel.');
+    }
+  }
 }

@@ -8,17 +8,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion } from "@/components/ui/accordion";
 import {
-    Table,
-    TableBody,
-    TableCaption,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Deployment,
     DeploymentListItem,
+    Deployment,
 } from "@/components/DeploymentListItem";
 
 // Определяем полный тип для проекта, включая деплои
@@ -82,31 +75,36 @@ export default function ProjectDetailsPage() {
                     </a>
 
                     <div className="mt-8">
-                        <h2 className="text-2xl font-semibold">
+                        <h2 className="text-2xl font-semibold mb-4">
                             Recent Deployments
                         </h2>
-                        <Table className="mt-4">
-                            <TableCaption>
-                                A list of your recent project deployments.
-                            </TableCaption>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Details</TableHead>
-                                    <TableHead className="text-right">
-                                        Status
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+
+                        {/* Заголовки "таблицы" */}
+                        <div className="flex justify-between text-sm text-muted-foreground px-4 py-2 border-b">
+                            <span>Details</span>
+                            <span>Status</span>
+                        </div>
+
+                        {project.deployments.length > 0 ? (
+                            // Оборачиваем список в Accordion
+                            <Accordion
+                                type="single"
+                                collapsible
+                                className="w-full"
+                            >
                                 {project.deployments.map((deployment) => (
                                     <DeploymentListItem
                                         key={deployment.id}
                                         deployment={deployment}
-                                        projectGitUrl={project.gitUrl} // <-- Передаем URL репозитория
+                                        projectGitUrl={project.gitUrl}
                                     />
                                 ))}
-                            </TableBody>
-                        </Table>
+                            </Accordion>
+                        ) : (
+                            <p className="text-muted-foreground text-center p-8">
+                                No deployments found.
+                            </p>
+                        )}
                     </div>
                 </>
             ) : null}
