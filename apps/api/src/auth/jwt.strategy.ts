@@ -5,31 +5,27 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
-    private configService: ConfigService,
+    configService: ConfigService,
     private prisma: PrismaService,
   ) {
+    const secret = configService.get<string>('SECRET_KEY');
+    if (!secret) {
+      throw new Error('JWT Secret could not be loaded');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // Говорим TypeScript, что мы уверены, что значение не будет undefined
-      secretOrKey: configService.get<string>('SECRET_KEY') as string,
+      secretOrKey: secret,
     });
   }
 
-  // Этот метод будет вызываться, если токен валиден
-  async validate(payload: { sub: string; email: string }) {
+  async validate(payload: any) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
-
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-
-    // Объект, который вернет этот метод, будет добавлен в объект `req.user`
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    if (!user) throw new UnauthorizedException();
     const { password, ...result } = user;
     return result;
   }

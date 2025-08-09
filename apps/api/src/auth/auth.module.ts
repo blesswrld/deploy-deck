@@ -5,22 +5,24 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Module({
   imports: [
-    PassportModule,
-    // Используем асинхронную фабрику для JwtModule
+    ConfigModule, // <-- Важно импортировать
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      imports: [ConfigModule], // Импортируем ConfigModule, чтобы получить доступ к ConfigService
+      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         // Получаем секрет из переменных окружения
         secret: configService.get<string>('SECRET_KEY'),
-        signOptions: { expiresIn: '60m' },
+        signOptions: { expiresIn: '1d' },
       }),
       inject: [ConfigService], // Инжектируем ConfigService в нашу фабрику
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, PrismaService],
+  exports: [PassportModule, JwtModule],
 })
 export class AuthModule {}

@@ -206,7 +206,6 @@ export class IntegrationsService {
           headers: {
             Authorization: `Bearer ${vercelToken}`,
           },
-          // Логи могут быть большими, Vercel отдает их как text/plain
           responseType: 'text',
         },
       );
@@ -220,6 +219,142 @@ export class IntegrationsService {
           throw new NotFoundException('Deployment not found.');
       }
       throw new Error('Failed to fetch deployment logs from Vercel.');
+    }
+  }
+
+  async connectGithub(userId: string, code: string) {
+    // 1. Обмениваем временный `code` на `access_token`
+    const tokenResponse = await axios.post(
+      'https://github.com/login/oauth/access_token',
+      {
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        code,
+      },
+      {
+        headers: { Accept: 'application/json' },
+      },
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+    if (!accessToken) {
+      throw new UnauthorizedException(
+        'Failed to retrieve GitHub access token.',
+      );
+    }
+
+    // 2. Используя полученный токен, запрашиваем данные о пользователе GitHub
+    const userResponse = await axios.get('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const { id: githubId, login: githubUsername } = userResponse.data;
+
+    // 3. Шифруем токен и сохраняем все данные в нашу базу
+    const encryptedToken = this.encryptionService.encrypt(accessToken);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        githubId,
+        githubUsername,
+        githubAccessToken: encryptedToken,
+      },
+    });
+
+    return { message: 'GitHub account connected successfully.' };
+  }
+
+  async getGithubChecks(userId: string, projectId: string) {
+    // 1. Получаем пользователя и проект, проверяем права и наличие токенов
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.githubAccessToken) {
+      throw new UnauthorizedException('GitHub account not connected.');
+    }
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+    if (!project || project.userId !== userId) {
+      throw new ForbiddenException('Access to this project is denied.');
+    }
+
+    // 2. Парсим owner и repo из gitUrl
+    // Пример: "https://github.com/blesswrld/deploy-deck.git" -> "blesswrld/deploy-deck"
+    const gitUrlMatch = project.gitUrl.match(
+      /github\.com\/([^/]+\/[^/]+)(?:\.git)?/,
+    );
+    if (!gitUrlMatch) {
+      throw new NotFoundException(
+        `Invalid GitHub repository URL format for: ${project.gitUrl}`,
+      );
+    }
+    const repoFullName = gitUrlMatch[1]; // "blesswrld/deploy-deck"
+
+    // 3. Расшифровываем токен
+    const githubToken = this.encryptionService.decrypt(user.githubAccessToken);
+    const authHeaders = { Authorization: `Bearer ${githubToken}` };
+
+    try {
+      // 4. Получаем последний коммит из главной ветки репозитория
+      // Сначала получаем информацию о репозитории, чтобы узнать имя главной ветки
+      const repoResponse = await axios.get(
+        `https://api.github.com/repos/${repoFullName}`,
+        { headers: authHeaders },
+      );
+      const mainBranch = repoResponse.data.default_branch; // e.g., 'main' or 'master'
+
+      // Теперь получаем последний коммит из этой ветки
+      const commitsResponse = await axios.get(
+        `https://api.github.com/repos/${repoFullName}/commits?sha=${mainBranch}&per_page=1`,
+        { headers: authHeaders },
+      );
+      const latestCommitSha = commitsResponse.data[0]?.sha;
+
+      if (!latestCommitSha) {
+        return { status: 'not_found', conclusion: null };
+      }
+
+      // 5. Получаем статусы проверок (checks) для этого коммита
+      const checksResponse = await axios.get(
+        `https://api.github.com/repos/${repoFullName}/commits/${latestCommitSha}/check-runs`,
+        { headers: authHeaders },
+      );
+
+      const checkRuns = checksResponse.data.check_runs;
+      if (checkRuns.length === 0) {
+        return { status: 'completed', conclusion: 'success' }; // Если проверок нет, считаем, что все хорошо
+      }
+
+      // 6. Агрегируем статусы. Если хоть один 'failure', то общий статус 'failure'.
+      // Если хоть один 'in_progress', то 'in_progress'. Иначе 'success'.
+      let conclusion = 'success';
+      if (
+        checkRuns.some(
+          (run) =>
+            run.conclusion === 'failure' || run.conclusion === 'cancelled',
+        )
+      ) {
+        conclusion = 'failure';
+      }
+
+      let status = 'completed';
+      if (checkRuns.some((run) => run.status !== 'completed')) {
+        status = 'in_progress';
+      }
+
+      return { status, conclusion };
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        throw new UnauthorizedException('Invalid GitHub token.');
+      }
+      console.error(
+        `Failed to fetch GitHub checks for ${repoFullName}:`,
+        error,
+      );
+      throw new Error('Failed to fetch GitHub checks.');
     }
   }
 }

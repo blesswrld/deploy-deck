@@ -17,6 +17,10 @@ model User {
 
   vercelApiToken String?
 
+  githubId         Int?     @unique // ID пользователя на GitHub, уникальный
+  githubUsername   String?  // Логин на GitHub
+  githubAccessToken String?  // Зашифрованный токен доступа
+
   // Добавляем связь: у этого пользователя есть список проектов
   projects  Project[]
 }

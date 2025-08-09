@@ -40,6 +40,7 @@ import Link from "next/link";
 import { LinkVercelDialog } from "@/components/LinkVercelDialog";
 import { DashboardDeploymentStatus } from "@/components/DashboardDeploymentStatus.tsx";
 import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
+import { GithubChecksStatus } from "@/components/GithubChecksStatus";
 
 interface Project {
     id: string;
@@ -261,6 +262,10 @@ export default function DashboardPage() {
                                         </Link>
 
                                         <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-4">
+                                            <GithubChecksStatus
+                                                projectId={project.id}
+                                                gitUrl={project.gitUrl}
+                                            />
                                             {project.vercelProjectId ? (
                                                 // Если проект связан, показываем компонент статуса
                                                 <DashboardDeploymentStatus

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -10,6 +10,7 @@ import { EncryptionService } from './common/encryption/encryption.service';
 import { EncryptionModule } from './common/encryption/encryption.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 
+@Global()
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }), // <-- Делаем конфиг глобальным
@@ -21,6 +22,6 @@ import { IntegrationsModule } from './integrations/integrations.module';
     EncryptionModule,
   ],
   controllers: [AppController],
-  providers: [AppService, EncryptionService],
+  providers: [AppService],
 })
 export class AppModule {}
