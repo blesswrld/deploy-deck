@@ -9,7 +9,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { EncryptionService } from './common/encryption/encryption.service';
 import { EncryptionModule } from './common/encryption/encryption.module';
 import { IntegrationsModule } from './integrations/integrations.module';
-
+import { SupabaseModule } from './supabase/supabase.module';
 @Global()
 @Module({
   imports: [
@@ -20,6 +20,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
     ProjectsModule,
     IntegrationsModule,
     EncryptionModule,
+    SupabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

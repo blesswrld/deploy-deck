@@ -12,8 +12,11 @@ model User {
   id        String    @id @default(cuid())
   email     String    @unique
   password  String
+  name      String? // Имя пользователя, необязательное
+  avatarUrl String? // Ссылка на аватар, необязательная
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  
 
   vercelApiToken String?
 

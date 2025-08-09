@@ -7,12 +7,14 @@ import {
 import { EncryptionService } from 'src/common/encryption/encryption.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import axios from 'axios';
+import { SupabaseService } from 'src/supabase/supabase.service'; // <-- Импортируем
 
 @Injectable()
 export class IntegrationsService {
   constructor(
     private prisma: PrismaService,
     private encryptionService: EncryptionService,
+    private supabase: SupabaseService, // <-- Внедряем
   ) {}
 
   async connectVercel(userId: string, token: string) {
@@ -421,5 +423,18 @@ export class IntegrationsService {
     });
 
     return projectsWithGitUrl;
+  }
+  async createAvatarUploadUrl(userId: string, fileType: string) {
+    const supabaseClient = this.supabase.getClient();
+    const filePath = `${userId}/${Date.now()}`; // Уникальный путь для файла
+
+    const { data, error } = await supabaseClient.storage
+      .from('avatars')
+      .createSignedUploadUrl(filePath);
+
+    if (error) {
+      throw new Error('Could not create upload URL');
+    }
+    return data;
   }
 }

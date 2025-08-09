@@ -111,4 +111,13 @@ export class IntegrationsController {
   getImportableVercelProjects(@GetUser() user: User) {
     return this.integrationsService.getImportableVercelProjects(user.id);
   }
+
+  @Post('avatars/upload-url')
+  @UseGuards(JwtAuthGuard)
+  createAvatarUploadUrl(
+    @GetUser() user: User,
+    @Body('fileType') fileType: string,
+  ) {
+    return this.integrationsService.createAvatarUploadUrl(user.id, fileType);
+  }
 }

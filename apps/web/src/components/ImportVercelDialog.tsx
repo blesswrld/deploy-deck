@@ -78,7 +78,7 @@ export function ImportVercelDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
+            <DialogContent className="max-w-[90vw] sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Import from Vercel</DialogTitle>
                     <DialogDescription>
@@ -88,7 +88,10 @@ export function ImportVercelDialog({
                 {isLoading ? (
                     <p>Loading Vercel projects...</p>
                 ) : (
-                    <div className="max-h-80 overflow-y-auto space-y-2">
+                    <div
+                        className="max-h-80 overflow-y-auto space-y-2 pr-2 
+                         scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
+                    >
                         {projects.length > 0 ? (
                             projects.map((project) => (
                                 <div

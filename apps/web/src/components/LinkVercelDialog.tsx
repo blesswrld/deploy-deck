@@ -62,7 +62,7 @@ export function LinkVercelDialog({
 
     return (
         <Dialog open={!!projectToLink} onOpenChange={onClose}>
-            <DialogContent>
+            <DialogContent className="max-w-[90vw] sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>
                         Link "{projectToLink?.name}" to a Vercel Project
@@ -71,7 +71,10 @@ export function LinkVercelDialog({
                 {isLoading ? (
                     <p>Loading Vercel projects...</p>
                 ) : (
-                    <div className="max-h-60 overflow-y-auto space-y-2">
+                    <div
+                        className="max-h-60 overflow-y-auto space-y-2 pr-2
+                         scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
+                    >
                         {vercelProjects.map((vercelProject) => (
                             <div
                                 key={vercelProject.id}

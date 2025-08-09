@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common'; // Добавляем ForbiddenException
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -42,5 +43,16 @@ export class UsersService {
     });
 
     return { message: 'Password updated successfully' };
+  }
+
+  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateProfileDto,
+    });
+
+    // Не возвращаем пароль клиенту
+    const { password, ...result } = updatedUser;
+    return result;
   }
 }
