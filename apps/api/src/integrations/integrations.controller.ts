@@ -9,6 +9,7 @@ import {
   Res,
   HttpCode,
   HttpStatus,
+  Delete,
 } from '@nestjs/common';
 import { IntegrationsService } from './integrations.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -91,5 +92,17 @@ export class IntegrationsController {
     @Param('projectId') projectId: string,
   ) {
     return this.integrationsService.getGithubChecks(user.id, projectId);
+  }
+
+  @Delete('vercel')
+  @UseGuards(JwtAuthGuard)
+  disconnectVercel(@GetUser() user: User) {
+    return this.integrationsService.disconnectVercel(user.id);
+  }
+
+  @Delete('github')
+  @UseGuards(JwtAuthGuard)
+  disconnectGithub(@GetUser() user: User) {
+    return this.integrationsService.disconnectGithub(user.id);
   }
 }

@@ -1,6 +1,11 @@
 "use client";
 
-import { GitCommitHorizontal, GitBranch, UserCircle } from "lucide-react";
+import {
+    GitCommitHorizontal,
+    GitBranch,
+    UserCircle,
+    ExternalLink,
+} from "lucide-react";
 import { DeploymentStatusBadge } from "./DeploymentStatusBadge";
 import { format, formatDistanceToNow } from "date-fns";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
@@ -27,6 +32,7 @@ export interface Deployment {
     creator: string;
     createdAt: string;
     commitUrl?: string;
+    url: string;
 }
 
 interface DeploymentListItemProps {
@@ -54,7 +60,7 @@ export function DeploymentListItem({
         <AccordionItem value={deployment.id} className="border-b">
             <AccordionTrigger className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full p-4 gap-4 hover:bg-muted/50 hover:no-underline text-left">
                 {/* Левая часть */}
-                <div>
+                <div className="flex-grow">
                     <div className="font-medium">{deployment.message}</div>
                     <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-1">
                         <div className="flex items-center gap-1">
@@ -91,20 +97,37 @@ export function DeploymentListItem({
                 </div>
 
                 {/* Правая часть */}
-                <div className="w-full sm:w-auto text-left sm:text-right">
+                <div className="w-full sm:w-48 sm:text-right flex sm:flex-col items-center justify-between sm:justify-start">
                     <DeploymentStatusBadge status={deployment.status} />
 
-                    {/* Добавляем HoverCard для времени */}
-                    <HoverCard>
-                        <HoverCardTrigger asChild>
-                            <div className="text-xs text-muted-foreground mt-1 cursor-pointer">
-                                {timeAgo}
-                            </div>
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-auto">
-                            <p className="text-sm">{fullDate}</p>
-                        </HoverCardContent>
-                    </HoverCard>
+                    <div className="flex items-center justify-start sm:justify-end gap-2 mt-1">
+                        <HoverCard>
+                            <HoverCardTrigger asChild>
+                                <div className="text-xs text-muted-foreground cursor-pointer">
+                                    {timeAgo}
+                                </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-auto">
+                                <p className="text-sm">{fullDate}</p>
+                            </HoverCardContent>
+                        </HoverCard>
+
+                        {/* Ссылка на Vercel */}
+                        <a
+                            href={deployment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                                // Предотвращаем и открытие аккордеона, и переход по ссылке родителя
+                                e.stopPropagation();
+                            }}
+                            className="text-muted-foreground hover:text-foreground"
+                            title="Open deployment in Vercel"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            <span className="sr-only">Open in Vercel</span>
+                        </a>
+                    </div>
                 </div>
             </AccordionTrigger>
             <AccordionContent>

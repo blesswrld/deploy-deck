@@ -15,8 +15,13 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { LogOut, MoreHorizontal, MoreVertical } from "lucide-react";
-import { Settings } from "lucide-react";
+import {
+    LogOut,
+    MoreHorizontal,
+    MoreVertical,
+    Settings,
+    UserCircle,
+} from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -201,6 +206,15 @@ export default function DashboardPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
                                     <Link
+                                        href="/profile"
+                                        className="flex items-center w-full"
+                                    >
+                                        <UserCircle className="mr-2 h-4 w-4" />
+                                        <span>Profile</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link
                                         href="/settings"
                                         className="flex items-center w-full"
                                     >
@@ -220,6 +234,12 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="hidden md:flex items-center gap-4">
+                        <Link href="/profile">
+                            <Button variant="ghost" size="icon">
+                                <UserCircle className="h-5 w-5" />
+                                <span className="sr-only">Profile</span>
+                            </Button>
+                        </Link>
                         <Link href="/settings">
                             <Button variant="ghost" size="icon">
                                 <Settings className="h-5 w-5" />

@@ -25,6 +25,7 @@ interface ChecksData {
         | "skipped"
         | "timed_out"
         | null;
+    url: string | null;
 }
 
 export function GithubChecksStatus({
@@ -102,12 +103,29 @@ export function GithubChecksStatus({
 
     const { Icon, color, label, spin } = renderStatus();
 
+    const StatusIcon = (
+        <div className={`flex items-center gap-1 ${color}`}>
+            <Icon className={`h-4 w-4 ${spin ? "animate-spin" : ""}`} />
+        </div>
+    );
+
     return (
         <HoverCard>
-            <HoverCardTrigger>
-                <div className={`flex items-center gap-1 ${color}`}>
-                    <Icon className={`h-4 w-4 ${spin ? "animate-spin" : ""}`} />
-                </div>
+            <HoverCardTrigger asChild>
+                {/* Если есть URL, оборачиваем иконку в ссылку */}
+                {data?.url ? (
+                    <a
+                        href={data.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()} // Предотвращаем клик по ссылке на проект
+                    >
+                        {StatusIcon}
+                    </a>
+                ) : (
+                    // Иначе просто показываем иконку
+                    StatusIcon
+                )}
             </HoverCardTrigger>
             <HoverCardContent className="text-sm">{label}</HoverCardContent>
         </HoverCard>

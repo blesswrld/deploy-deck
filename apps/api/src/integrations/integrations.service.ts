@@ -176,6 +176,7 @@ export class IntegrationsService {
           'No message',
         creator: dep.creator.username,
         createdAt: dep.createdAt,
+        url: `https://${dep.url}`,
       }));
     } catch (error) {
       console.error(
@@ -312,9 +313,11 @@ export class IntegrationsService {
         { headers: authHeaders },
       );
       const latestCommitSha = commitsResponse.data[0]?.sha;
+      const checksPageUrl = commitsResponse.data[0]?.html_url; // <-- ПОЛУЧАЕМ URL
 
       if (!latestCommitSha) {
-        return { status: 'not_found', conclusion: null };
+        // Если коммитов нет, возвращаем специальный статус
+        return { status: 'not_found', conclusion: 'neutral', url: null };
       }
 
       // 5. Получаем статусы проверок (checks) для этого коммита
@@ -324,14 +327,14 @@ export class IntegrationsService {
       );
 
       const checkRuns = checksResponse.data.check_runs;
-      if (checkRuns.length === 0) {
-        return { status: 'completed', conclusion: 'success' }; // Если проверок нет, считаем, что все хорошо
-      }
 
       // 6. Агрегируем статусы. Если хоть один 'failure', то общий статус 'failure'.
       // Если хоть один 'in_progress', то 'in_progress'. Иначе 'success'.
-      let conclusion = 'success';
-      if (
+      let conclusion: string | null = 'success';
+      if (checkRuns.length === 0) {
+        // Если проверок нет, считаем, что все хорошо
+        conclusion = 'success';
+      } else if (
         checkRuns.some(
           (run) =>
             run.conclusion === 'failure' || run.conclusion === 'cancelled',
@@ -345,7 +348,7 @@ export class IntegrationsService {
         status = 'in_progress';
       }
 
-      return { status, conclusion };
+      return { status, conclusion, url: checksPageUrl };
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         throw new UnauthorizedException('Invalid GitHub token.');
@@ -356,5 +359,33 @@ export class IntegrationsService {
       );
       throw new Error('Failed to fetch GitHub checks.');
     }
+  }
+  async disconnectVercel(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        vercelApiToken: null, // Просто обнуляем токен
+      },
+    });
+    // Также обнуляем все связанные vercelProjectId у проектов этого пользователя
+    await this.prisma.project.updateMany({
+      where: { userId },
+      data: {
+        vercelProjectId: null,
+      },
+    });
+    return { message: 'Vercel account disconnected successfully.' };
+  }
+  async disconnectGithub(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      // Обнуляем все поля, связанные с GitHub
+      data: {
+        githubAccessToken: null,
+        githubId: null,
+        githubUsername: null,
+      },
+    });
+    return { message: 'GitHub account disconnected successfully.' };
   }
 }

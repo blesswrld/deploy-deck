@@ -1,15 +1,25 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import type { Request } from 'express';
+import { Controller, Get, UseGuards, Req, Patch, Body } from '@nestjs/common'; // Добавляем Patch и Body
+import { UsersService } from './users.service';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { UpdatePasswordDto } from './dto/update-password.dto';
+import type { User } from '@prisma/client';
+import { GetUser } from 'src/auth/get-user.decorator';
 
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-  // Этот декоратор защищает весь контроллер (или отдельный роут)
-  // Он будет использовать нашу JwtStrategy по умолчанию
-  @UseGuards(AuthGuard('jwt'))
-  @Get('me') // Роут будет /users/me
-  getMe(@Req() req: Request) {
-    // После успешной валидации токена, в req.user будет объект пользователя
-    return req.user;
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get('me')
+  getProfile(@GetUser() user: User) {
+    return user;
+  }
+
+  @Patch('me/password')
+  updatePassword(
+    @GetUser() user: User,
+    @Body() updatePasswordDto: UpdatePasswordDto,
+  ) {
+    return this.usersService.updatePassword(user.id, updatePasswordDto);
   }
 }

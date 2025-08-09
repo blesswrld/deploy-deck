@@ -43,7 +43,7 @@ export class AuthService {
     return result;
   }
 
-  // === НОВЫЙ МЕТОД LOGIN ===
+  // === МЕТОД LOGIN ===
   async login(loginDto: CreateAuthDto) {
     const { email, password } = loginDto;
 
