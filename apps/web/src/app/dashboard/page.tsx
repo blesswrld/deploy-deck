@@ -19,6 +19,7 @@ import {
     LogOut,
     MoreHorizontal,
     MoreVertical,
+    PlusCircle,
     Settings,
     UserCircle,
 } from "lucide-react";
@@ -46,6 +47,7 @@ import { LinkVercelDialog } from "@/components/LinkVercelDialog";
 import { DashboardDeploymentStatus } from "@/components/DashboardDeploymentStatus.tsx";
 import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
 import { GithubChecksStatus } from "@/components/GithubChecksStatus";
+import { ImportVercelDialog } from "@/components/ImportVercelDialog";
 
 interface Project {
     id: string;
@@ -70,6 +72,7 @@ export default function DashboardPage() {
     const [isLoadingData, setIsLoadingData] = useState(true);
     // Состояние для открытия/закрытия модального окна
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
     useEffect(() => {
         // Загружаем проекты, только если пользователь точно аутентифицирован
@@ -149,6 +152,12 @@ export default function DashboardPage() {
             <header className="flex flex-wrap md:flex-nowrap justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Your Dashboard</h1>
                 <div className="flex w-full justify-between items-center mt-3 md:mt-0 gap-2 md:w-auto md:justify-start md:gap-4">
+                    {projects.length > 0 && (
+                        <Button onClick={() => setIsImportDialogOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add New
+                        </Button>
+                    )}
                     {/* Кнопка, открывающая модальное окно */}
                     <Dialog
                         open={isDialogOpen || !!projectToEdit}
@@ -354,7 +363,22 @@ export default function DashboardPage() {
                                 ))}
                             </ul>
                         ) : (
-                            <p>You don't have any projects yet.</p>
+                            // === БЛОК ДЛЯ ПУСТОГО СОСТОЯНИЯ ===
+                            <div className="text-center py-12">
+                                <h3 className="font-semibold text-lg">
+                                    No projects found
+                                </h3>
+                                <p className="text-muted-foreground mt-1 mb-4">
+                                    Get started by importing your projects from
+                                    Vercel.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsImportDialogOpen(true)}
+                                >
+                                    Import from Vercel
+                                </Button>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
@@ -385,6 +409,13 @@ export default function DashboardPage() {
                 projectToLink={projectToLink}
                 onClose={() => setProjectToLink(null)}
                 onLinked={handleProjectUpdated}
+            />
+
+            <ImportVercelDialog
+                isOpen={isImportDialogOpen}
+                onClose={() => setIsImportDialogOpen(false)}
+                onProjectImported={handleProjectAdded} // Он добавит проект в список
+                existingProjects={projects} // Передаем, чтобы отфильтровать уже добавленные
             />
         </div>
     );

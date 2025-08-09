@@ -105,4 +105,10 @@ export class IntegrationsController {
   disconnectGithub(@GetUser() user: User) {
     return this.integrationsService.disconnectGithub(user.id);
   }
+
+  @Get('vercel/importable-projects')
+  @UseGuards(JwtAuthGuard)
+  getImportableVercelProjects(@GetUser() user: User) {
+    return this.integrationsService.getImportableVercelProjects(user.id);
+  }
 }

@@ -46,12 +46,8 @@ export class IntegrationsService {
         },
       });
 
-      // Возвращаем только нужные нам данные
-      return response.data.projects.map((project: any) => ({
-        id: project.id,
-        name: project.name,
-        framework: project.framework,
-      }));
+      // Просто возвращаем все проекты как есть
+      return response.data.projects;
     } catch (error) {
       // Если токен невалидный, Vercel вернет 403 Forbidden
       if (axios.isAxiosError(error) && error.response?.status === 403) {
@@ -387,5 +383,43 @@ export class IntegrationsService {
       },
     });
     return { message: 'GitHub account disconnected successfully.' };
+  }
+  async getImportableVercelProjects(userId: string) {
+    // 1. Получаем все проекты из Vercel
+    const allVercelProjects = await this.getVercelProjects(userId);
+
+    // 2. Получаем все проекты, которые уже есть в нашей базе
+    const existingProjects = await this.prisma.project.findMany({
+      where: { userId, vercelProjectId: { not: null } },
+      select: { vercelProjectId: true },
+    });
+    const existingVercelIds = new Set(
+      existingProjects.map((p) => p.vercelProjectId),
+    );
+
+    // 3. Фильтруем Vercel проекты, оставляя только те, которых еще нет у нас
+    const importableProjects = allVercelProjects.filter(
+      (vp: any) => !existingVercelIds.has(vp.id),
+    );
+
+    // 4. Обогащаем оставшиеся проекты информацией о Git-репозитории
+    // Vercel API `/v9/projects` возвращает `link` с типом, например, 'github'
+    // и именами org/repo. Мы можем собрать из этого gitUrl.
+    const projectsWithGitUrl = importableProjects.map((project: any) => {
+      let gitUrl: string | null = null;
+      if (project.link?.type === 'github') {
+        gitUrl = `https://github.com/${project.link.org}/${project.link.repo}`;
+      }
+      // TODO: Добавить обработку для GitLab, Bitbucket и т.д.
+
+      return {
+        vercelProjectId: project.id,
+        name: project.name,
+        framework: project.framework,
+        gitUrl: gitUrl, // Может быть null, если репозиторий не привязан в Vercel
+      };
+    });
+
+    return projectsWithGitUrl;
   }
 }

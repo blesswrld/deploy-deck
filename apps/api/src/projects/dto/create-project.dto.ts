@@ -1,4 +1,4 @@
-import { IsString, IsUrl, MinLength } from 'class-validator';
+import { IsString, IsUrl, MinLength, IsOptional } from 'class-validator';
 
 export class CreateProjectDto {
   @IsString()
@@ -7,4 +7,9 @@ export class CreateProjectDto {
 
   @IsUrl()
   gitUrl: string;
+
+  // Делаем это поле необязательным, так как оно будет только при импорте
+  @IsString()
+  @IsOptional()
+  vercelProjectId?: string;
 }
