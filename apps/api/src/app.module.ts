@@ -6,6 +6,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
+import { EncryptionService } from './common/encryption/encryption.service';
+import { EncryptionModule } from './common/encryption/encryption.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 
 @Module({
   imports: [
@@ -14,8 +17,10 @@ import { ProjectsModule } from './projects/projects.module';
     PrismaModule,
     UsersModule,
     ProjectsModule,
+    IntegrationsModule,
+    EncryptionModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, EncryptionService],
 })
 export class AppModule {}

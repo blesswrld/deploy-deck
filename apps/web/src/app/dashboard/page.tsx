@@ -16,6 +16,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { MoreHorizontal } from "lucide-react";
+import { Settings } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -35,6 +36,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AddProjectForm } from "@/components/AddProjectForm";
+import Link from "next/link";
 
 interface Project {
     id: string;
@@ -183,6 +185,12 @@ export default function DashboardPage() {
                             />
                         </DialogContent>
                     </Dialog>
+
+                    <Link href="/settings">
+                        <Button variant="ghost" size="icon">
+                            <Settings className="h-5 w-5" />
+                        </Button>
+                    </Link>
 
                     <Button onClick={handleLogout} variant="outline">
                         Log Out
