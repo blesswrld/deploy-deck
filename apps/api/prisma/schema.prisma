@@ -1,20 +1,33 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") // Prisma будет брать строку подключения из .env
+  url      = env("DATABASE_URL")
 }
 
-// Модель пользователя. Здесь будут храниться данные о тех, кто регистрируется.
+// --- МОДЕЛЬ ПОЛЬЗОВАТЕЛЯ ---
 model User {
-  id        String   @id @default(cuid()) // Уникальный ID, генерируется автоматически
-  email     String   @unique // Email должен быть уникальным
-  password  String   // Здесь будет храниться ЗАХЭШИРОВАННЫЙ пароль
-  createdAt DateTime @default(now()) // Дата создания
-  updatedAt DateTime @updatedAt // Дата последнего обновления
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Добавляем связь: у этого пользователя есть список проектов
+  projects  Project[]
+}
+
+// --- МОДЕЛЬ ПРОЕКТА ---
+model Project {
+  id          String   @id @default(cuid())
+  name        String   // Название проекта, например, "My Awesome Website"
+  gitUrl      String   @unique // Ссылка на Git-репозиторий, должна быть уникальной
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Добавляем связь: этот проект принадлежит одному пользователю
+  userId      String   // "Внешний ключ" для связи с User
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
