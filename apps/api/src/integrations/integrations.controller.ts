@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Get, Param } from '@nestjs/common';
 import { IntegrationsService } from './integrations.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { GetUser } from 'src/auth/get-user.decorator';
@@ -18,6 +18,22 @@ export class IntegrationsController {
     return this.integrationsService.connectVercel(
       user.id,
       connectVercelDto.token,
+    );
+  }
+
+  @Get('vercel/projects')
+  getVercelProjects(@GetUser() user: User) {
+    return this.integrationsService.getVercelProjects(user.id);
+  }
+
+  @Get('vercel/deployments/:projectId')
+  getVercelDeploymentStatus(
+    @GetUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.integrationsService.getVercelDeploymentStatus(
+      user.id,
+      projectId,
     );
   }
 }

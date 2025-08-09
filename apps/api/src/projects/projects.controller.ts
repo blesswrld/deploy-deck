@@ -44,6 +44,15 @@ export class ProjectsController {
     return this.projectsService.update(id, updateProjectDto, user.id);
   }
 
+  @Patch(':id/link-vercel')
+  linkVercelProject(
+    @Param('id') id: string,
+    @Body('vercelProjectId') vercelProjectId: string,
+    @GetUser() user: User,
+  ) {
+    return this.projectsService.linkVercelProject(id, vercelProjectId, user.id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string, @GetUser() user: User) {
     return this.projectsService.remove(id, user.id);

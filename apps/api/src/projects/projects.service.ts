@@ -60,6 +60,16 @@ export class ProjectsService {
     });
   }
 
+  async linkVercelProject(id: string, vercelProjectId: string, userId: string) {
+    // Проверяем, что проект принадлежит пользователю
+    await this.findOne(id, userId);
+
+    return this.prisma.project.update({
+      where: { id },
+      data: { vercelProjectId },
+    });
+  }
+
   async remove(id: string, userId: string) {
     // Сначала проверяем, что проект существует и принадлежит пользователю
     await this.findOne(id, userId);

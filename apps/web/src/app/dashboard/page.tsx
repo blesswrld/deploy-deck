@@ -37,11 +37,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddProjectForm } from "@/components/AddProjectForm";
 import Link from "next/link";
+import { LinkVercelDialog } from "@/components/LinkVercelDialog";
+import { DeploymentStatus } from "@/components/DeploymentStatus";
 
 interface Project {
     id: string;
     name: string;
     gitUrl: string;
+    vercelProjectId?: string | null;
 }
 
 export default function DashboardPage() {
@@ -55,6 +58,7 @@ export default function DashboardPage() {
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(
         null
     );
+    const [projectToLink, setProjectToLink] = useState<Project | null>(null);
 
     const [isLoadingData, setIsLoadingData] = useState(true);
     // Состояние для открытия/закрытия модального окна
@@ -76,18 +80,8 @@ export default function DashboardPage() {
                 }
             };
             fetchProjects();
-        } else {
         }
     }, [isAuthenticated, api]);
-
-    // Пока идет проверка аутентификации, показываем заглушку
-    if (isAuthLoading || !isAuthenticated) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                Authenticating...
-            </div>
-        );
-    }
 
     const handleLogout = () => {
         setToken(null);
@@ -105,13 +99,11 @@ export default function DashboardPage() {
     };
 
     const handleProjectUpdated = (updatedProject: Project) => {
-        setProjects((currentProjects) => {
-            const newProjects = currentProjects.map((p) =>
+        setProjects((currentProjects) =>
+            currentProjects.map((p) =>
                 p.id === updatedProject.id ? updatedProject : p
-            );
-
-            return newProjects;
-        });
+            )
+        );
     };
 
     const handleDeleteProject = async () => {
@@ -135,12 +127,21 @@ export default function DashboardPage() {
         });
     };
 
+    // Пока идет проверка аутентификации, показываем заглушку
+    if (isAuthLoading || !isAuthenticated) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                Authenticating...
+            </div>
+        );
+    }
+
     // Основной интерфейс
     return (
         <div className="container mx-auto p-4 md:p-8">
             <header className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Your Dashboard</h1>
-                <div className="flex gap-4">
+                <div className="flex items-center gap-4">
                     {/* Кнопка, открывающая модальное окно */}
                     <Dialog
                         open={isDialogOpen || !!projectToEdit}
@@ -221,46 +222,70 @@ export default function DashboardPage() {
                                             </p>
                                         </div>
 
-                                        {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
+                                        <div className="flex items-center gap-2">
+                                            {project.vercelProjectId ? (
+                                                // Если проект связан, показываем компонент статуса
+                                                <DeploymentStatus
+                                                    projectId={project.id}
+                                                />
+                                            ) : (
+                                                // Иначе показываем кнопку "Link"
                                                 <Button
-                                                    variant="ghost"
-                                                    className="h-8 w-8 p-0"
-                                                >
-                                                    <span className="sr-only">
-                                                        Open menu
-                                                    </span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>
-                                                    Actions
-                                                </DropdownMenuLabel>
-                                                <DropdownMenuItem
-                                                    onClick={() => {
-                                                        setProjectToEdit(
-                                                            project
-                                                        ); // <-- Сохраняем проект для редактирования
-                                                        setIsDialogOpen(true);
-                                                    }}
-                                                >
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem
-                                                    className="text-red-600"
+                                                    variant="outline"
+                                                    size="sm"
                                                     onClick={() =>
-                                                        setProjectToDelete(
+                                                        setProjectToLink(
                                                             project
                                                         )
-                                                    } // <-- Устанавливаем проект для удаления
+                                                    }
                                                 >
-                                                    Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                                    Link to Vercel
+                                                </Button>
+                                            )}
+
+                                            {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0"
+                                                    >
+                                                        <span className="sr-only">
+                                                            Open menu
+                                                        </span>
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>
+                                                        Actions
+                                                    </DropdownMenuLabel>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setProjectToEdit(
+                                                                project
+                                                            ); // <-- Сохраняем проект для редактирования
+                                                            setIsDialogOpen(
+                                                                true
+                                                            );
+                                                        }}
+                                                    >
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        className="text-red-600"
+                                                        onClick={() =>
+                                                            setProjectToDelete(
+                                                                project
+                                                            )
+                                                        } // <-- Устанавливаем проект для удаления
+                                                    >
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>
@@ -292,6 +317,11 @@ export default function DashboardPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <LinkVercelDialog
+                projectToLink={projectToLink}
+                onClose={() => setProjectToLink(null)}
+                onLinked={handleProjectUpdated}
+            />
         </div>
     );
 }

@@ -29,6 +29,9 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Новое, необязательное поле для ID проекта из Vercel
+  vercelProjectId String?  @unique
+
   // Добавляем связь: этот проект принадлежит одному пользователю
   userId      String   // "Внешний ключ" для связи с User
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
