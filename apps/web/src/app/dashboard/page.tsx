@@ -1,89 +1,101 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useApi } from "@/hooks/useApi";
+import { useRequireAuth } from "@/hooks/useRequireAuth"; // <-- ХУК
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 
-// Создадим тип для данных пользователя
-interface User {
+interface Project {
     id: string;
-    email: string;
+    name: string;
+    gitUrl: string;
 }
 
 export default function DashboardPage() {
-    const [user, setUser] = useState<User | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const router = useRouter();
+    const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
+
+    const { setToken } = useAuth();
+    const { api } = useApi();
+
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            // 1. Получаем токен из localStorage
-            const token = localStorage.getItem("accessToken");
+        // Загружаем проекты, только если пользователь точно аутентифицирован
+        if (isAuthenticated) {
+            const fetchProjects = async () => {
+                setIsLoadingData(true);
+                try {
+                    const data = await api("/projects");
 
-            if (!token) {
-                // Если токена нет, немедленно перекидываем на логин
-                router.push("/login");
-                return;
-            }
-
-            try {
-                // 2. Делаем запрос на защищенный эндпоинт
-                const response = await fetch("http://localhost:3002/users/me", {
-                    method: "GET",
-                    headers: {
-                        // 3. Передаем токен в заголовке Authorization
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (response.status === 401) {
-                    // Если токен невалидный (например, истек), тоже кидаем на логин
-                    throw new Error("Unauthorized");
+                    setProjects(data);
+                } catch (error: any) {
+                    toast.error(`Failed to fetch projects: ${error.message}`);
+                } finally {
+                    setIsLoadingData(false);
                 }
+            };
+            fetchProjects();
+        } else {
+        }
+    }, [isAuthenticated, api]);
 
-                if (!response.ok) {
-                    throw new Error("Failed to fetch user profile");
-                }
+    const handleLogout = () => {
+        setToken(null);
+        // Редирект произойдет автоматически благодаря useRequireAuth
+    };
 
-                const userData = await response.json();
-                setUser(userData);
-            } catch (err) {
-                // В случае любой ошибки (включая 401) - удаляем невалидный токен и редиректим
-                localStorage.removeItem("accessToken");
-                router.push("/login");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchProfile();
-    }, [router]);
-
-    if (isLoading) {
+    // Пока идет проверка аутентификации, показываем заглушку
+    if (isAuthLoading || !isAuthenticated) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                Loading...
+                Authenticating...
             </div>
         );
     }
 
-    if (user) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen">
-                <h1 className="text-4xl font-bold">
-                    Welcome to your Dashboard!
-                </h1>
-                <p className="mt-4 text-lg">
-                    Your email is:{" "}
-                    <span className="font-mono bg-gray-200 p-1 rounded">
-                        {user.email}
-                    </span>
-                </p>
-            </div>
-        );
-    }
-
-    // Этот return не должен сработать, так как useEffect сделает редирект,
-    // но он нужен на случай, если что-то пойдет не так
-    return null;
+    // Основной интерфейс
+    return (
+        <div className="container mx-auto p-4 md:p-8">
+            <header className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold">Your Dashboard</h1>
+                <Button onClick={handleLogout} variant="outline">
+                    Log Out
+                </Button>
+            </header>
+            <main>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>My Projects</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingData ? (
+                            <p>Loading projects...</p>
+                        ) : projects.length > 0 ? (
+                            <ul className="space-y-4">
+                                {projects.map((project) => (
+                                    <li
+                                        key={project.id}
+                                        className="border-b pb-2"
+                                    >
+                                        <p className="font-semibold text-lg">
+                                            {project.name}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {project.gitUrl}
+                                        </p>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>You don't have any projects yet.</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
+        </div>
+    );
 }

@@ -13,6 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -21,35 +23,34 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    const { setToken } = useAuth();
+
+    const handleSubmit = async () => {
         setIsLoading(true);
         setError(null);
 
         try {
-            // Отправляем запрос на эндпоинт /auth/login
             const response = await fetch("http://localhost:3002/auth/login", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
             });
 
+            // Сначала читаем тело ответа
             const data = await response.json();
 
             if (!response.ok) {
+                // data.message - это сообщение об ошибке от NestJS, например "Unauthorized"
                 throw new Error(data.message || "Something went wrong");
             }
 
-            // Сохраняем полученный токен в localStorage
-            // В реальном приложении лучше использовать httpOnly cookie или более безопасное хранилище
-            localStorage.setItem("accessToken", data.accessToken);
+            setToken(data.accessToken);
+            toast.success("Login successful!");
 
-            alert("Login successful! Redirecting to dashboard...");
-            router.push("/dashboard"); // Редирект на дашборд после успешного входа
+            router.push("/dashboard");
         } catch (err: any) {
             setError(err.message);
+            toast.error(err.message);
         } finally {
             setIsLoading(false);
         }
@@ -94,7 +95,8 @@ export default function LoginPage() {
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
                         <Button
-                            type="submit"
+                            type="button"
+                            onClick={() => handleSubmit()}
                             className="w-full"
                             disabled={isLoading}
                         >

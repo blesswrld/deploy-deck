@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation"; // <-- Импортируем хук для редиректа
+import { toast } from "sonner";
 
 export default function SignupPage() {
     // === БЛОК 1: Состояние для полей ввода и ошибок ===
@@ -46,11 +47,14 @@ export default function SignupPage() {
             }
 
             // Если все успешно, можно перенаправить пользователя на страницу входа
-            alert("Account created successfully! Redirecting to login...");
-            router.push("/login"); // <-- Редирект на страницу логина (которую мы создадим позже)
+            toast.success("Account created successfully!", {
+                description: "You can now log in.",
+            });
+            router.push("/login"); // <-- Редирект на страницу входа
         } catch (err: any) {
             // Ловим ошибку и отображаем ее
             setError(err.message);
+            toast.error(err.message);
         } finally {
             setIsLoading(false); // Разблокируем кнопку в любом случае
         }

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 // Импортируем Toaster, который является оберткой над Sonner
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,8 +21,10 @@ export default function RootLayout({
         <html lang="en" className="dark">
             {/* dark для темной темы по умолчанию */}
             <body className={inter.className}>
-                {children}
-                <Toaster />
+                <AuthProvider>
+                    {children}
+                    <Toaster />
+                </AuthProvider>
             </body>
         </html>
     );
