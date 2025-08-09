@@ -4,13 +4,17 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { IntegrationsService } from 'src/integrations/integrations.service';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class ProjectsService {
   // Внедряем PrismaService через конструктор
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private integrations: IntegrationsService,
+  ) {}
 
   create(createProjectDto: CreateProjectDto, userId: string) {
     return this.prisma.project.create({
@@ -46,7 +50,21 @@ export class ProjectsService {
       );
     }
 
-    return project;
+    let deployments = [];
+    if (project.vercelProjectId) {
+      // Запрашиваем деплои, но перехватываем ошибки, чтобы не ломать весь запрос
+      try {
+        deployments = await this.integrations.getVercelDeployments(userId, id);
+      } catch (error) {
+        console.error(
+          `Failed to fetch deployments for project ${id}:`,
+          error.message,
+        );
+        // Не бросаем ошибку, просто возвращаем пустой массив
+      }
+    }
+
+    return { ...project, deployments };
   }
 
   async update(id: string, updateProjectDto: UpdateProjectDto, userId: string) {

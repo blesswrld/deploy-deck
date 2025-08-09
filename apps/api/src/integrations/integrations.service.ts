@@ -85,7 +85,6 @@ export class IntegrationsService {
     const vercelToken = this.encryptionService.decrypt(user.vercelApiToken);
 
     try {
-      // Делаем запрос к Vercel API на получение списка деплоев для конкретного проекта
       const response = await axios.get(
         `https://api.vercel.com/v6/deployments?projectId=${project.vercelProjectId}&limit=1`,
         {
@@ -100,13 +99,94 @@ export class IntegrationsService {
         return { status: 'NOT_DEPLOYED' };
       }
 
-      // Возвращаем только статус
-      return { status: latestDeployment.state }; // например, 'READY', 'BUILDING', 'ERROR'
+      // Извлекаем дополнительные данные из объекта meta
+      const commit =
+        latestDeployment.meta?.githubCommitSha ||
+        latestDeployment.meta?.gitCommitSha ||
+        null;
+      const branch =
+        latestDeployment.meta?.githubCommitRef ||
+        latestDeployment.meta?.gitCommitRef ||
+        null;
+
+      // Возвращаем более подробный объект
+      return {
+        status: latestDeployment.state, // 'READY', 'BUILDING', 'ERROR'
+        branch: branch,
+        commit: commit ? commit.slice(0, 7) : null, // Возвращаем короткий хэш (7 символов)
+        createdAt: latestDeployment.createdAt,
+      };
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 403) {
         throw new UnauthorizedException('Invalid Vercel API token.');
       }
       throw new Error('Failed to fetch deployment status from Vercel.');
+    }
+  }
+
+  async getVercelDeployments(
+    userId: string,
+    projectId: string,
+    limit: number = 20,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.vercelApiToken) {
+      throw new UnauthorizedException('Vercel account not connected.');
+    }
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    // Объединяем проверки для чистоты
+    if (!project || project.userId !== userId) {
+      throw new ForbiddenException('Access to this project is denied.');
+    }
+    if (!project.vercelProjectId) {
+      // Возвращаем пустой массив, а не ошибку, если проект просто не связан
+      return [];
+    }
+
+    const vercelToken = this.encryptionService.decrypt(user.vercelApiToken);
+
+    try {
+      const response = await axios.get(
+        `https://api.vercel.com/v6/deployments?projectId=${project.vercelProjectId}&limit=${limit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${vercelToken}`,
+          },
+        },
+      );
+
+      if (!response.data || !response.data.deployments) {
+        return [];
+      }
+
+      // Возвращаем более подробный массив для отображения истории
+      return response.data.deployments.map((dep: any) => ({
+        id: dep.uid,
+        status: dep.state,
+        branch:
+          dep.meta?.githubCommitRef || dep.meta?.gitCommitRef || 'Unknown',
+        commit: dep.meta?.githubCommitSha || dep.meta?.gitCommitSha || 'N/A',
+        message:
+          dep.meta?.githubCommitMessage ||
+          dep.meta?.gitCommitMessage ||
+          'No message',
+        creator: dep.creator.username,
+        createdAt: dep.createdAt,
+      }));
+    } catch (error) {
+      console.error(
+        `[IntegrationsService] Failed to fetch deployments for Vercel project ${project.vercelProjectId}`,
+        error,
+      );
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        throw new UnauthorizedException('Invalid Vercel API token.');
+      }
+      // Возвращаем пустой массив в случае ошибки, чтобы не ломать фронтенд
+      return [];
     }
   }
 }

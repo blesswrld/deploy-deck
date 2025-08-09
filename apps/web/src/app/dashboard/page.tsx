@@ -38,7 +38,8 @@ import {
 import { AddProjectForm } from "@/components/AddProjectForm";
 import Link from "next/link";
 import { LinkVercelDialog } from "@/components/LinkVercelDialog";
-import { DeploymentStatus } from "@/components/DeploymentStatus";
+import { DashboardDeploymentStatus } from "@/components/DashboardDeploymentStatus.tsx";
+import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
 
 interface Project {
     id: string;
@@ -205,7 +206,7 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         {isLoadingData ? (
-                            <p>Loading projects...</p>
+                            <ProjectListSkeleton />
                         ) : projects.length > 0 ? (
                             <ul className="space-y-4">
                                 {projects.map((project) => (
@@ -213,19 +214,25 @@ export default function DashboardPage() {
                                         key={project.id}
                                         className="flex items-center justify-between rounded-lg border p-4"
                                     >
-                                        <div>
-                                            <p className="font-semibold text-lg">
-                                                {project.name}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {project.gitUrl}
-                                            </p>
-                                        </div>
+                                        <Link
+                                            href={`/project/${project.id}`}
+                                            className="flex-grow"
+                                        >
+                                            <div>
+                                                <p className="font-semibold text-lg hover:underline">
+                                                    {project.name}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {project.gitUrl}
+                                                </p>
+                                            </div>
+                                        </Link>
 
-                                        <div className="flex items-center gap-2">
+                                        {/* Правая часть с кнопками остается без Link */}
+                                        <div className="flex items-center gap-2 pl-4">
                                             {project.vercelProjectId ? (
                                                 // Если проект связан, показываем компонент статуса
-                                                <DeploymentStatus
+                                                <DashboardDeploymentStatus
                                                     projectId={project.id}
                                                 />
                                             ) : (
@@ -233,11 +240,12 @@ export default function DashboardPage() {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() =>
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // <-- Останавливаем "всплытие" клика
                                                         setProjectToLink(
                                                             project
-                                                        )
-                                                    }
+                                                        );
+                                                    }}
                                                 >
                                                     Link to Vercel
                                                 </Button>
