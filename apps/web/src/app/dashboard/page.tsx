@@ -15,7 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { MoreHorizontal } from "lucide-react";
+import { LogOut, MoreHorizontal, MoreVertical } from "lucide-react";
 import { Settings } from "lucide-react";
 import {
     DropdownMenu,
@@ -139,10 +139,10 @@ export default function DashboardPage() {
 
     // Основной интерфейс
     return (
-        <div className="container mx-auto p-4 md:p-8">
-            <header className="flex justify-between items-center mb-8">
+        <div className="container mx-auto  p-4 md:p-8">
+            <header className="flex flex-wrap md:flex-nowrap justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Your Dashboard</h1>
-                <div className="flex items-center gap-4">
+                <div className="flex w-full justify-between items-center mt-3 md:mt-0 gap-2 md:w-auto md:justify-start md:gap-4">
                     {/* Кнопка, открывающая модальное окно */}
                     <Dialog
                         open={isDialogOpen || !!projectToEdit}
@@ -188,15 +188,47 @@ export default function DashboardPage() {
                         </DialogContent>
                     </Dialog>
 
-                    <Link href="/settings">
-                        <Button variant="ghost" size="icon">
-                            <Settings className="h-5 w-5" />
-                        </Button>
-                    </Link>
+                    {/* Меню для мобильных устройств */}
+                    <div className="md:hidden">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-5 w-5" />
+                                    <span className="sr-only">Open menu</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link
+                                        href="/settings"
+                                        className="flex items-center w-full"
+                                    >
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        <span>Settings</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={handleLogout}
+                                    className="text-red-500 focus:text-red-500"
+                                >
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    <span>Log Out</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
 
-                    <Button onClick={handleLogout} variant="outline">
-                        Log Out
-                    </Button>
+                    <div className="hidden md:flex items-center gap-4">
+                        <Link href="/settings">
+                            <Button variant="ghost" size="icon">
+                                <Settings className="h-5 w-5" />
+                                <span className="sr-only">Settings</span>
+                            </Button>
+                        </Link>
+                        <Button onClick={handleLogout} variant="outline">
+                            Log Out
+                        </Button>
+                    </div>
                 </div>
             </header>
             <main>
@@ -212,7 +244,7 @@ export default function DashboardPage() {
                                 {projects.map((project) => (
                                     <li
                                         key={project.id}
-                                        className="flex items-center justify-between rounded-lg border p-4"
+                                        className="flex flex-wrap items-center justify-between rounded-lg border p-4"
                                     >
                                         <Link
                                             href={`/project/${project.id}`}
@@ -228,8 +260,7 @@ export default function DashboardPage() {
                                             </div>
                                         </Link>
 
-                                        {/* Правая часть с кнопками остается без Link */}
-                                        <div className="flex items-center gap-2 pl-4">
+                                        <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-4">
                                             {project.vercelProjectId ? (
                                                 // Если проект связан, показываем компонент статуса
                                                 <DashboardDeploymentStatus

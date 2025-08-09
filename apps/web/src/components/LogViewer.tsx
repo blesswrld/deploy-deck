@@ -34,7 +34,8 @@ export function LogViewer({ deploymentId }: LogViewerProps) {
         <pre
             className="bg-gray-900 text-white font-mono text-xs p-4 rounded-md 
                  overflow-x-auto max-h-80 
-                 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
+                 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800
+                 whitespace-pre-wrap"
         >
             <code>{data?.logs || "No logs available."}</code>
         </pre>

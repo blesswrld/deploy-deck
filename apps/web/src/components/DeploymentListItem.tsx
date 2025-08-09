@@ -52,11 +52,11 @@ export function DeploymentListItem({
 
     return (
         <AccordionItem value={deployment.id} className="border-b">
-            <AccordionTrigger className="flex justify-between w-full p-4 hover:bg-muted/50 hover:no-underline text-left">
+            <AccordionTrigger className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full p-4 gap-4 hover:bg-muted/50 hover:no-underline text-left">
                 {/* Левая часть */}
                 <div>
                     <div className="font-medium">{deployment.message}</div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-1">
                         <div className="flex items-center gap-1">
                             <UserCircle className="h-3 w-3" />
                             <span>{deployment.creator}</span>
@@ -91,8 +91,7 @@ export function DeploymentListItem({
                 </div>
 
                 {/* Правая часть */}
-                <div className="text-right">
-                    {/* Добавляем отображение статуса */}
+                <div className="w-full sm:w-auto text-left sm:text-right">
                     <DeploymentStatusBadge status={deployment.status} />
 
                     {/* Добавляем HoverCard для времени */}

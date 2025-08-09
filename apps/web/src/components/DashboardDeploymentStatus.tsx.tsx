@@ -52,7 +52,7 @@ export function DashboardDeploymentStatus({
     if (data) status = data.status;
 
     return (
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             {data?.branch && (
                 <div className="flex items-center gap-1">
                     <GitBranch className="h-3 w-3" />

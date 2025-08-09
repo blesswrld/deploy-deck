@@ -62,7 +62,7 @@ export default function SignupPage() {
 
     // === БЛОК 3: Привязываем состояние и обработчик к JSX ===
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="flex items-center justify-center min-h-screen p-4 md:p-8 bg-gray-100 dark:bg-gray-900">
             {/* Оборачиваем карточку в тег <form> и вешаем на него наш обработчик */}
             <form onSubmit={handleSubmit}>
                 <Card className="w-full max-w-sm">

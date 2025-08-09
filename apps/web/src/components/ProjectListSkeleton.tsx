@@ -7,18 +7,27 @@ export function ProjectListSkeleton() {
             {Array.from({ length: 3 }).map((_, index) => (
                 <div
                     key={index}
-                    className="flex items-center justify-between rounded-lg border p-4"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-4 gap-4"
                 >
-                    <div className="space-y-2">
-                        {/* Имитируем название проекта */}
-                        <Skeleton className="h-6 w-48" />
-                        {/* Имитируем URL */}
-                        <Skeleton className="h-4 w-64" />
+                    {/* Левая часть скелетона */}
+                    <div className="flex-grow space-y-2 w-full">
+                        {/* Имитируем название проекта/сообщение коммита */}
+                        <Skeleton className="h-6 w-3/4" />
+
+                        {/* Имитируем мета-данные (автор, ветка, коммит) */}
+                        <div className="flex flex-wrap items-center gap-4">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-4 w-24" />
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {/* Имитируем статус и меню */}
-                        <Skeleton className="h-8 w-24" />
-                        <Skeleton className="h-8 w-8 rounded-md" />
+
+                    {/* Правая часть скелетона */}
+                    <div className="w-full sm:w-auto flex sm:flex-col items-center sm:items-end justify-between">
+                        {/* Имитируем статус */}
+                        <Skeleton className="h-4 w-16" />
+                        {/* Имитируем время */}
+                        <Skeleton className="h-3 w-24 mt-1" />
                     </div>
                 </div>
             ))}
