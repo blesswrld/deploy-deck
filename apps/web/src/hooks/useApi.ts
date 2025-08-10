@@ -1,3 +1,4 @@
+// apps/web/src/hooks/useApi.ts (ФИНАЛЬНАЯ, ИСПРАВЛЕННАЯ ВЕРСЯ)
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,13 +8,13 @@ import { useCallback } from "react";
 const API_BASE_URL = "http://localhost:3002";
 
 export const useApi = () => {
-    const { token, setToken } = useAuth(); // Получаем токен и функцию для его сброса
+    const { token, setToken } = useAuth();
 
     // Создаем функцию fetcher, которую будем использовать для всех запросов
     const fetcher = useCallback(
         async (endpoint: string, options: RequestInit = {}) => {
             const url = `${API_BASE_URL}${endpoint}`;
-            const headers = {
+            const headers: HeadersInit = {
                 "Content-Type": "application/json",
                 ...options.headers,
             };
@@ -28,18 +29,17 @@ export const useApi = () => {
                 headers,
             });
 
-            // Если сервер ответил 401 Unauthorized, это значит токен протух или невалиден.
-            // Сбрасываем токен и перезагружаем страницу, чтобы пользователя выкинуло на логин.
+            // Делаем редирект ТОЛЬКО на 401. 403 и другие ошибки пойдут дальше.
             if (response.status === 401) {
                 setToken(null);
-                // Можно также сделать router.push('/login'), но перезагрузка надежнее
                 window.location.reload();
+                // Эта ошибка все равно не будет показана из-за перезагрузки.
                 throw new Error("Session expired. Please log in again.");
             }
 
             if (!response.ok) {
-                // Пытаемся получить тело ошибки от NestJS
                 const errorData = await response.json();
+                // Пробрасываем ошибку дальше, чтобы ее можно было поймать в .catch()
                 throw new Error(errorData.message || "An API error occurred");
             }
 
@@ -50,7 +50,7 @@ export const useApi = () => {
 
             return response;
         },
-        [token, setToken] // Зависимости хука
+        [token, setToken]
     );
 
     return { api: fetcher };

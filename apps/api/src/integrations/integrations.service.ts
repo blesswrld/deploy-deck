@@ -33,8 +33,16 @@ export class IntegrationsService {
 
   async getVercelProjects(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.vercelApiToken) {
-      throw new UnauthorizedException('Vercel account not connected.');
+
+    // Проверка 1: Пользователь существует? Если нет, это 401 Unauthorized.
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Проверка 2: Vercel вообще подключен? Если нет, это 403 Forbidden.
+    // Это ошибка НЕ аутентификации, а АВТОРИЗАЦИИ (у тебя нет прав на это действие).
+    if (!user.vercelApiToken) {
+      throw new ForbiddenException('Vercel account is not connected.');
     }
 
     // Расшифровываем токен
@@ -51,10 +59,17 @@ export class IntegrationsService {
       // Просто возвращаем все проекты как есть
       return response.data.projects;
     } catch (error) {
-      // Если токен невалидный, Vercel вернет 403 Forbidden
-      if (axios.isAxiosError(error) && error.response?.status === 403) {
-        throw new UnauthorizedException('Invalid Vercel API token.');
+      // Проверка 3: Vercel забанил нас за rate limit или токен невалиден?
+      // Это тоже 403 Forbidden, потому что проблема не в нашей сессии, а в доступе к Vercel.
+      if (
+        axios.isAxiosError(error) &&
+        (error.response?.status === 403 || error.response?.status === 429)
+      ) {
+        throw new ForbiddenException(
+          'Invalid Vercel API token or rate limit exceeded.',
+        );
       }
+      // Все остальные ошибки - это 500 Internal Server Error
       throw new Error('Failed to fetch projects from Vercel.');
     }
   }

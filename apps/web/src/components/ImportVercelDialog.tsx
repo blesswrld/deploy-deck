@@ -38,12 +38,26 @@ export function ImportVercelDialog({
     useEffect(() => {
         if (isOpen) {
             setIsLoading(true);
+            setProjects([]);
+
             api("/integrations/vercel/importable-projects")
                 .then(setProjects)
-                .catch((err) => toast.error(err.message))
+                .catch((err) => {
+                    // Теперь этот .catch будет ловить ошибку 403 и другие, но не 401.
+                    toast.error("Could not fetch Vercel projects", {
+                        description: err.message, // err.message теперь будет "Vercel account is not connected." или "Invalid or rate-limited..."
+                        action: {
+                            label: "Go to Settings",
+                            onClick: () => {
+                                window.location.href = "/settings";
+                            },
+                        },
+                    });
+                    onClose(); // Закрываем диалог после ошибки
+                })
                 .finally(() => setIsLoading(false));
         }
-    }, [isOpen, api]);
+    }, [isOpen, api, onClose]);
 
     const handleImport = (project: ImportableProject) => {
         // Мы передаем все данные, полученные от нашего эндпоинта, на /projects
