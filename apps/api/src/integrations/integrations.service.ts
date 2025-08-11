@@ -556,7 +556,6 @@ export class IntegrationsService {
       throw new Error('Failed to cancel deployment on Vercel.');
     }
   }
-<<<<<<< HEAD
 
   async getGithubCommits(userId: string, project: Project) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -599,6 +598,4 @@ export class IntegrationsService {
       return [];
     }
   }
-=======
->>>>>>> f8719a1d434d75a9982c50c4c7d9133c5f3ea235
 }

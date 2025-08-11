@@ -81,13 +81,7 @@ export default function ProjectDetailsPage() {
                                 id: data.id || `temp-${Date.now()}`,
                                 status: "QUEUED",
                                 branch: data.meta?.githubCommitRef || "unknown",
-<<<<<<< HEAD
                                 commit: data.meta?.githubCommitSha || "...",
-=======
-                                commit: (
-                                    data.meta?.githubCommitSha || "..."
-                                ).slice(0, 7),
->>>>>>> f8719a1d434d75a9982c50c4c7d9133c5f3ea235
                                 message:
                                     data.meta?.githubCommitMessage ||
                                     "Redeploying...",
