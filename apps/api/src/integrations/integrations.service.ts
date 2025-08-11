@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { EncryptionService } from 'src/common/encryption/encryption.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -36,7 +37,7 @@ export class IntegrationsService {
 
     // Проверка 1: Пользователь существует? Если нет, это 401 Unauthorized.
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException('User not found.');
     }
 
     // Проверка 2: Vercel вообще подключен? Если нет, это 403 Forbidden.
@@ -49,12 +50,14 @@ export class IntegrationsService {
     const vercelToken = this.encryptionService.decrypt(user.vercelApiToken);
 
     try {
-      // Делаем запрос к Vercel API
-      const response = await axios.get('https://api.vercel.com/v9/projects', {
-        headers: {
-          Authorization: `Bearer ${vercelToken}`,
+      const response = await axios.get(
+        'https://api.vercel.com/v9/projects?limit=100',
+        {
+          headers: {
+            Authorization: `Bearer ${vercelToken}`,
+          },
         },
-      });
+      );
 
       // Просто возвращаем все проекты как есть
       return response.data.projects;
@@ -76,8 +79,11 @@ export class IntegrationsService {
 
   async getVercelDeploymentStatus(userId: string, projectId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.vercelApiToken) {
-      throw new UnauthorizedException('Vercel account not connected.');
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+    if (!user.vercelApiToken) {
+      throw new ForbiddenException('Vercel account not connected.');
     }
 
     // Находим проект в нашей базе, чтобы получить vercelProjectId
@@ -131,20 +137,19 @@ export class IntegrationsService {
       };
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 403) {
-        throw new UnauthorizedException('Invalid Vercel API token.');
+        throw new ForbiddenException('Invalid Vercel API token.');
       }
       throw new Error('Failed to fetch deployment status from Vercel.');
     }
   }
 
-  async getVercelDeployments(
-    userId: string,
-    projectId: string,
-    limit: number = 20,
-  ) {
+  async getVercelDeployments(userId: string, projectId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.vercelApiToken) {
-      throw new UnauthorizedException('Vercel account not connected.');
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+    if (!user.vercelApiToken) {
+      throw new ForbiddenException('Vercel account not connected.');
     }
 
     const project = await this.prisma.project.findUnique({
@@ -164,7 +169,7 @@ export class IntegrationsService {
 
     try {
       const response = await axios.get(
-        `https://api.vercel.com/v6/deployments?projectId=${project.vercelProjectId}&limit=${limit}`,
+        `https://api.vercel.com/v6/deployments?projectId=${project.vercelProjectId}&limit=20`,
         {
           headers: {
             Authorization: `Bearer ${vercelToken}`,
@@ -197,7 +202,7 @@ export class IntegrationsService {
         error,
       );
       if (axios.isAxiosError(error) && error.response?.status === 403) {
-        throw new UnauthorizedException('Invalid Vercel API token.');
+        throw new ForbiddenException('Invalid Vercel API token.');
       }
       // Возвращаем пустой массив в случае ошибки, чтобы не ломать фронтенд
       return [];
@@ -206,8 +211,11 @@ export class IntegrationsService {
 
   async getVercelDeploymentLogs(userId: string, deploymentId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.vercelApiToken) {
-      throw new UnauthorizedException('Vercel account not connected.');
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+    if (!user.vercelApiToken) {
+      throw new ForbiddenException('Vercel account not connected.');
     }
 
     const vercelToken = this.encryptionService.decrypt(user.vercelApiToken);
@@ -228,7 +236,7 @@ export class IntegrationsService {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         if (error.response.status === 403)
-          throw new UnauthorizedException('Invalid Vercel API token.');
+          throw new ForbiddenException('Invalid Vercel API token.');
         if (error.response.status === 404)
           throw new NotFoundException('Deployment not found.');
       }
@@ -259,14 +267,23 @@ export class IntegrationsService {
 
     // 2. Используя полученный токен, запрашиваем данные о пользователе GitHub
     const userResponse = await axios.get('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
-
     const { id: githubId, login: githubUsername } = userResponse.data;
 
-    // 3. Шифруем токен и сохраняем все данные в нашу базу
+    // ПРОВЕРКА ПЕРЕД СОХРАНЕНИЕМ
+    const existingConnection = await this.prisma.user.findUnique({
+      where: { githubId: githubId },
+    });
+
+    if (existingConnection && existingConnection.id !== userId) {
+      // Если этот GitHub ID уже используется ДРУГИМ пользователем
+      throw new ConflictException(
+        'This GitHub account is already linked to another user.',
+      );
+    }
+
+    // 3. Шифруем и сохраняем
     const encryptedToken = this.encryptionService.encrypt(accessToken);
 
     await this.prisma.user.update({
@@ -284,8 +301,11 @@ export class IntegrationsService {
   async getGithubChecks(userId: string, projectId: string) {
     // 1. Получаем пользователя и проект, проверяем права и наличие токенов
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.githubAccessToken) {
-      throw new UnauthorizedException('GitHub account not connected.');
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+    if (!user.githubAccessToken) {
+      throw new ForbiddenException('GitHub account not connected.');
     }
 
     const project = await this.prisma.project.findUnique({
@@ -363,8 +383,13 @@ export class IntegrationsService {
 
       return { status, conclusion, url: checksPageUrl };
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        throw new UnauthorizedException('Invalid GitHub token.');
+      if (
+        axios.isAxiosError(error) &&
+        (error.response?.status === 401 || error.response?.status === 403)
+      ) {
+        throw new ForbiddenException(
+          'Invalid GitHub token or insufficient permissions.',
+        );
       }
       console.error(
         `Failed to fetch GitHub checks for ${repoFullName}:`,

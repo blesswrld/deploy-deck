@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { IntegrationsService } from 'src/integrations/integrations.service';
@@ -16,7 +17,37 @@ export class ProjectsService {
     private integrations: IntegrationsService,
   ) {}
 
-  create(createProjectDto: CreateProjectDto, userId: string) {
+  async create(createProjectDto: CreateProjectDto, userId: string) {
+    const { gitUrl } = createProjectDto;
+
+    // Если gitUrl не пришел (хотя он обязательный по DTO, но для надежности)
+    if (!gitUrl) {
+      throw new ForbiddenException('Git URL is required to import a project.');
+    }
+
+    // Ищем проект с таким же gitUrl. ВАЖНО: ищем по всей базе, а не только у этого юзера,
+    // так как gitUrl уникален для всего приложения.
+    const existingProject = await this.prisma.project.findUnique({
+      where: {
+        gitUrl: gitUrl,
+      },
+    });
+
+    if (existingProject) {
+      // Если проект найден, проверяем, не принадлежит ли он уже этому пользователю
+      if (existingProject.userId === userId) {
+        throw new ConflictException(
+          `You have already imported the project with Git URL: ${gitUrl}`,
+        );
+      } else {
+        // Если он принадлежит другому пользователю - это проблема безопасности.
+        throw new ForbiddenException(
+          `This project's Git URL is already in use by another account.`,
+        );
+      }
+    }
+
+    // Если все проверки пройдены, создаем проект
     return this.prisma.project.create({
       data: {
         ...createProjectDto,

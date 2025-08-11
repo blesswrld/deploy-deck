@@ -37,7 +37,8 @@ const statusStyles: Record<Status, string> = {
 export function DashboardDeploymentStatus({
     projectId,
 }: DashboardDeploymentStatusProps) {
-    const fetcher = (url: string) => safeApi(url);
+    const { api } = useApi();
+    const fetcher = (endpoint: string) => api(endpoint);
 
     const { data, error, isLoading } = useSWR(
         `/integrations/vercel/deployments/${projectId}`,

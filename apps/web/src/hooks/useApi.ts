@@ -29,10 +29,9 @@ export const useApi = () => {
                 headers,
             });
 
-            // Делаем редирект ТОЛЬКО на 401. 403 и другие ошибки пойдут дальше.
             if (response.status === 401) {
-                setToken(null);
-                window.location.reload();
+                // setToken(null);
+                // window.location.reload();
                 // Эта ошибка все равно не будет показана из-за перезагрузки.
                 throw new Error("Session expired. Please log in again.");
             }

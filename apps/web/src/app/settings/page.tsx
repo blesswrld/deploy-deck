@@ -1,6 +1,7 @@
 "use client";
 
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
     Card,
     CardContent,
@@ -16,6 +17,7 @@ import useSWR from "swr";
 import { useApi } from "@/hooks/useApi";
 import { useSWRConfig } from "swr";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 // Определим тип для данных пользователя
 interface UserProfile {
@@ -27,12 +29,41 @@ export default function SettingsPage() {
     const { api } = useApi();
     const fetcher = (url: string) => api(url);
     const { mutate } = useSWRConfig();
+    const searchParams = useSearchParams(); // Хук для чтения URL-параметров
+    const router = useRouter();
 
     // Запрашиваем данные о пользователе
     const { data: user, isLoading: isUserLoading } = useSWR<UserProfile>(
         isAuthenticated ? "/users/me" : null,
         fetcher
     );
+
+    console.log(
+        "Settings page rendered. Search params:",
+        searchParams.toString()
+    );
+
+    useEffect(() => {
+        const githubStatus = searchParams.get("github-status");
+        const message = searchParams.get("message");
+
+        if (githubStatus === "success") {
+            toast.success("GitHub account connected successfully!");
+        } else if (githubStatus === "error") {
+            toast.error("Failed to connect GitHub account", {
+                description: message || "An unknown error occurred.",
+            });
+        }
+
+        // Мы чистим URL, только если параметры существуют,
+        // и делаем это с небольшой задержкой через setTimeout.
+        if (githubStatus) {
+            // Задержка в 100 миллисекунд. Этого более чем достаточно.
+            setTimeout(() => {
+                router.replace("/settings", { scroll: false });
+            }, 100);
+        }
+    }, [searchParams, router]);
 
     const handleConnectGithub = async () => {
         try {

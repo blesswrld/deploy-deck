@@ -62,7 +62,7 @@ export function GithubChecksStatus({
             return {
                 Icon: AlertCircle,
                 color: "text-yellow-500",
-                label: "Unable to fetch",
+                label: error.message,
                 spin: false,
             };
         }

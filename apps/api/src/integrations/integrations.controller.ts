@@ -75,14 +75,23 @@ export class IntegrationsController {
     return { redirectUrl: url };
   }
 
-  @Get('github/callback') // <-- ПУБЛИЧНЫЙ
+  @Get('github/callback')
   async githubCallback(
     @Query('code') code: string,
     @Query('state') userId: string,
     @Res() res: Response,
   ) {
-    await this.integrationsService.connectGithub(userId, code);
-    res.redirect('http://localhost:3000/settings');
+    try {
+      await this.integrationsService.connectGithub(userId, code);
+      // Добавляем параметр ?github-status=success к URL
+      res.redirect('http://localhost:3000/settings?github-status=success');
+    } catch (error) {
+      // Если произошла ошибка (например, GitHub уже привязан), редиректим с ошибкой
+      const errorMessage = encodeURIComponent(error.message);
+      res.redirect(
+        `http://localhost:3000/settings?github-status=error&message=${errorMessage}`,
+      );
+    }
   }
 
   @Get('github/checks/:projectId')
