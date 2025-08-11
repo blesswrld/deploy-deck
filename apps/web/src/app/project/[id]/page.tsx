@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useApi } from "@/hooks/useApi";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useParams } from "next/navigation";
@@ -13,6 +14,7 @@ import {
     DeploymentListItem,
     Deployment,
 } from "@/components/DeploymentListItem";
+import { toast } from "sonner";
 
 // Определяем полный тип для проекта, включая деплои
 interface ProjectDetails {
@@ -30,14 +32,92 @@ export default function ProjectDetailsPage() {
     const { api } = useApi();
     const fetcher = (endpoint: string) => api(endpoint);
 
+    const swrKey =
+        isAuthenticated && projectId ? `/projects/${projectId}` : null;
+
     const {
         data: project,
         error,
         isLoading,
-    } = useSWR<ProjectDetails>(
-        isAuthenticated && projectId ? `/projects/${projectId}` : null,
-        fetcher
+        mutate,
+    } = useSWR<ProjectDetails>(swrKey, fetcher, {
+        refreshInterval: 5000,
+    });
+
+    const [actionInProgressId, setActionInProgressId] = useState<string | null>(
+        null
     );
+
+    const isAnyDeploymentInProgress = project?.deployments.some(
+        (dep) => dep.status === "BUILDING" || dep.status === "QUEUED"
+    );
+
+    const handleDeploymentAction = (
+        deploymentId: string,
+        action: "redeploy" | "cancel"
+    ) => {
+        setActionInProgressId(deploymentId);
+
+        const promise =
+            action === "redeploy"
+                ? api(
+                      `/integrations/vercel/deployments/${deploymentId}/redeploy`,
+                      { method: "POST" }
+                  )
+                : api(
+                      `/integrations/vercel/deployments/${deploymentId}/cancel`,
+                      { method: "PATCH" }
+                  );
+
+        toast.promise(promise, {
+            loading: `${action === "redeploy" ? "Starting redeployment" : "Canceling deployment"}...`,
+            success: (data) => {
+                mutate(
+                    (currentData) => {
+                        if (!currentData) return currentData;
+
+                        if (action === "redeploy" && data) {
+                            const optimisticDeployment: Deployment = {
+                                id: data.id || `temp-${Date.now()}`,
+                                status: "QUEUED",
+                                branch: data.meta?.githubCommitRef || "unknown",
+                                commit: data.meta?.githubCommitSha || "...",
+                                message:
+                                    data.meta?.githubCommitMessage ||
+                                    "Redeploying...",
+                                creator: "You",
+                                createdAt: new Date().toISOString(),
+                                url: `https://${data.url}`,
+                            };
+                            return {
+                                ...currentData,
+                                deployments: [
+                                    optimisticDeployment,
+                                    ...currentData.deployments,
+                                ],
+                            };
+                        } else {
+                            return {
+                                ...currentData,
+                                deployments: currentData.deployments.map((d) =>
+                                    d.id === deploymentId
+                                        ? { ...d, status: "CANCELED" }
+                                        : d
+                                ),
+                            };
+                        }
+                    },
+                    { revalidate: action === "cancel" }
+                );
+
+                return `Deployment action successful!`;
+            },
+            error: (err) => err.message || "An error occurred.",
+            finally: () => {
+                setActionInProgressId(null);
+            },
+        });
+    };
 
     if (isAuthLoading || !isAuthenticated) {
         return (
@@ -82,7 +162,7 @@ export default function ProjectDetailsPage() {
                         {/* Заголовки "таблицы" */}
                         <div className="flex justify-between text-sm text-muted-foreground px-4 py-2 border-b">
                             <span>Details</span>
-                            <span>Status</span>
+                            <span>Status & Actions</span>
                         </div>
 
                         {project.deployments.length > 0 ? (
@@ -97,6 +177,13 @@ export default function ProjectDetailsPage() {
                                         key={deployment.id}
                                         deployment={deployment}
                                         projectGitUrl={project.gitUrl}
+                                        onDeploymentAction={
+                                            handleDeploymentAction
+                                        }
+                                        actionInProgressId={actionInProgressId}
+                                        isDeploymentLocked={
+                                            isAnyDeploymentInProgress
+                                        }
                                     />
                                 ))}
                             </Accordion>

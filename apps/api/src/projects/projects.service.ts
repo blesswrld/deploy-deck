@@ -28,9 +28,7 @@ export class ProjectsService {
     // Ищем проект с таким же gitUrl. ВАЖНО: ищем по всей базе, а не только у этого юзера,
     // так как gitUrl уникален для всего приложения.
     const existingProject = await this.prisma.project.findUnique({
-      where: {
-        gitUrl: gitUrl,
-      },
+      where: { gitUrl: gitUrl },
     });
 
     if (existingProject) {
@@ -49,53 +47,73 @@ export class ProjectsService {
 
     // Если все проверки пройдены, создаем проект
     return this.prisma.project.create({
-      data: {
-        ...createProjectDto,
-        userId: userId,
-      },
+      data: { ...createProjectDto, userId: userId },
     });
   }
 
-  findAll(userId: string) {
-    // <-- Принимаем userId
-    // Находим все проекты, где userId совпадает с ID текущего пользователя
-    return this.prisma.project.findMany({
-      where: {
-        userId: userId,
-      },
+  async findAll(userId: string) {
+    // 1. ПОЛУЧАЕМ ПРОЕКТЫ ТОЛЬКО ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
+    const userProjects = await this.prisma.project.findMany({
+      where: { userId: userId },
+      orderBy: { createdAt: 'desc' },
     });
+
+    // 2. АСИНХРОННО ДЛЯ КАЖДОГО ПРОЕКТА ЗАПРАШИВАЕМ СТАТУСЫ
+    const projectsWithStatus = await Promise.all(
+      userProjects.map(async (project) => {
+        const deploymentStatus =
+          await this.integrations.getVercelDeploymentStatus(userId, project);
+        const commitSha = deploymentStatus?.commitSha;
+        const checksStatus = await this.integrations.getGithubChecks(
+          userId,
+          project,
+          commitSha,
+        );
+
+        return { ...project, deploymentStatus, checksStatus };
+      }),
+    );
+
+    return projectsWithStatus;
   }
 
   async findOne(id: string, userId: string) {
-    const project = await this.prisma.project.findUnique({
-      where: { id },
-    });
+    const project = await this.prisma.project.findUnique({ where: { id } });
 
-    if (!project) {
+    if (!project)
       throw new NotFoundException(`Project with ID "${id}" not found`);
-    }
-
-    if (project.userId !== userId) {
+    if (project.userId !== userId)
       throw new ForbiddenException(
         `You do not have permission to access this project`,
       );
-    }
 
-    let deployments = [];
-    if (project.vercelProjectId) {
-      // Запрашиваем деплои, но перехватываем ошибки, чтобы не ломать весь запрос
-      try {
-        deployments = await this.integrations.getVercelDeployments(userId, id);
-      } catch (error) {
-        console.error(
-          `Failed to fetch deployments for project ${id}:`,
-          error.message,
-        );
-        // Не бросаем ошибку, просто возвращаем пустой массив
-      }
-    }
+    // Получаем историю коммитов и деплоев параллельно
+    const [githubCommits, vercelDeployments] = await Promise.all([
+      this.integrations.getGithubCommits(userId, project),
+      this.integrations.getVercelDeployments(userId, id), // id здесь - это наш projectId
+    ]);
 
-    return { ...project, deployments };
+    // Создаем Map для быстрого поиска деплоев по хэшу коммита
+    const deploymentsMap = new Map(
+      vercelDeployments.map((dep) => [dep.commit, dep]),
+    );
+
+    // Объединяем данные: основа - коммиты из GitHub
+    const combinedHistory = githubCommits.map((commit) => {
+      const matchingDeployment = deploymentsMap.get(commit.sha);
+      return {
+        id: matchingDeployment?.id || commit.sha,
+        status: matchingDeployment?.status || 'NOT_DEPLOYED',
+        branch: commit.branch,
+        commit: commit.sha,
+        message: commit.message,
+        creator: commit.author,
+        createdAt: commit.date,
+        url: matchingDeployment?.url || commit.url,
+      };
+    });
+
+    return { ...project, deployments: combinedHistory };
   }
 
   async update(id: string, updateProjectDto: UpdateProjectDto, userId: string) {
@@ -124,8 +142,6 @@ export class ProjectsService {
     await this.findOne(id, userId);
 
     // Если проверка прошла, удаляем проект
-    return this.prisma.project.delete({
-      where: { id },
-    });
+    return this.prisma.project.delete({ where: { id } });
   }
 }

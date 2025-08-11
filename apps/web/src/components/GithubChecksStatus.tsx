@@ -1,19 +1,11 @@
 "use client";
 
-import { useApi } from "@/hooks/useApi";
-import useSWR from "swr";
 import { CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
 import {
     HoverCard,
     HoverCardContent,
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
-
-interface GithubChecksStatusProps {
-    projectId: string;
-    // Мы принимаем gitUrl, чтобы не делать лишний запрос за ним
-    gitUrl: string | null;
-}
 
 interface ChecksData {
     status: "completed" | "in_progress" | "not_found";
@@ -28,75 +20,44 @@ interface ChecksData {
     url: string | null;
 }
 
-export function GithubChecksStatus({
-    projectId,
-    gitUrl,
-}: GithubChecksStatusProps) {
-    const { api } = useApi();
-    const fetcher = (endpoint: string) => api(endpoint);
+interface GithubChecksStatusProps {
+    checksStatus: ChecksData | null | undefined;
+}
 
-    // Запускаем запрос только если есть gitUrl
-    const { data, error, isLoading } = useSWR<ChecksData>(
-        gitUrl ? `/integrations/github/checks/${projectId}` : null,
-        fetcher,
-        {
-            refreshInterval: 30000, // Обновляем каждые 30 секунд
-        }
-    );
-
-    // Если URL нет, ничего не рендерим
-    if (!gitUrl) {
+function GithubChecksStatus({ checksStatus }: GithubChecksStatusProps) {
+    if (!checksStatus) {
         return null;
     }
 
     const renderStatus = () => {
-        if (isLoading) {
+        if (checksStatus.status === "in_progress") {
             return {
                 Icon: Loader2,
-                color: "text-muted-foreground",
-                label: "Loading checks...",
+                color: "text-yellow-500",
+                label: "Checks in progress",
                 spin: true,
             };
         }
-        if (error) {
+        if (checksStatus.conclusion === "success") {
             return {
-                Icon: AlertCircle,
-                color: "text-yellow-500",
-                label: error.message,
+                Icon: CheckCircle2,
+                color: "text-green-500",
+                label: "Checks passed",
                 spin: false,
             };
         }
-        if (data) {
-            if (data.status === "in_progress") {
-                return {
-                    Icon: Loader2,
-                    color: "text-yellow-500",
-                    label: "Checks in progress",
-                    spin: true,
-                };
-            }
-            if (data.conclusion === "success") {
-                return {
-                    Icon: CheckCircle2,
-                    color: "text-green-500",
-                    label: "Checks passed",
-                    spin: false,
-                };
-            }
-            if (data.conclusion === "failure") {
-                return {
-                    Icon: XCircle,
-                    color: "text-red-500",
-                    label: "Checks failed",
-                    spin: false,
-                };
-            }
+        if (checksStatus.conclusion === "failure") {
+            return {
+                Icon: XCircle,
+                color: "text-red-500",
+                label: "Checks failed",
+                spin: false,
+            };
         }
-        // Статус по умолчанию или для других 'conclusion'
         return {
             Icon: AlertCircle,
             color: "text-muted-foreground",
-            label: "No checks found",
+            label: "Checks status unknown",
             spin: false,
         };
     };
@@ -112,13 +73,12 @@ export function GithubChecksStatus({
     return (
         <HoverCard>
             <HoverCardTrigger asChild>
-                {/* Если есть URL, оборачиваем иконку в ссылку */}
-                {data?.url ? (
+                {checksStatus.url ? (
                     <a
-                        href={data.url}
+                        href={checksStatus.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()} // Предотвращаем клик по ссылке на проект
+                        onClick={(e) => e.stopPropagation()}
                     >
                         {StatusIcon}
                     </a>
@@ -131,3 +91,5 @@ export function GithubChecksStatus({
         </HoverCard>
     );
 }
+
+export default GithubChecksStatus;

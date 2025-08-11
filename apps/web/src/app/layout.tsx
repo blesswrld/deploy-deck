@@ -18,7 +18,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className="dark">
+        <html lang="en" className="dark" suppressHydrationWarning={true}>
             {/* dark для темной темы по умолчанию */}
             <body className={inter.className}>
                 <AuthProvider>

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Post,
+  Patch,
   UseGuards,
   Get,
   Param,
@@ -10,6 +11,8 @@ import {
   HttpCode,
   HttpStatus,
   Delete,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { IntegrationsService } from './integrations.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -17,10 +20,14 @@ import { GetUser } from 'src/auth/get-user.decorator';
 import type { User } from '@prisma/client';
 import { ConnectVercelDto } from './dto/connect-vercel.dto';
 import type { Response } from 'express';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('integrations')
 export class IntegrationsController {
-  constructor(private readonly integrationsService: IntegrationsService) {}
+  constructor(
+    private readonly integrationsService: IntegrationsService,
+    private prisma: PrismaService,
+  ) {}
 
   // --- VERCEL ЭНДПОИНТЫ ---
   @Post('vercel')
@@ -41,17 +48,17 @@ export class IntegrationsController {
     return this.integrationsService.getVercelProjects(user.id);
   }
 
-  @Get('vercel/deployments/:projectId')
-  @UseGuards(JwtAuthGuard)
-  getVercelDeploymentStatus(
-    @GetUser() user: User,
-    @Param('projectId') projectId: string,
-  ) {
-    return this.integrationsService.getVercelDeploymentStatus(
-      user.id,
-      projectId,
-    );
-  }
+  // @Get('vercel/deployments/:projectId')
+  // @UseGuards(JwtAuthGuard)
+  // getVercelDeploymentStatus(
+  //   @GetUser() user: User,
+  //   @Param('projectId') projectId: string,
+  // ) {
+  //   return this.integrationsService.getVercelDeploymentStatus(
+  //     user.id,
+  //     projectId,
+  //   );
+  // }
 
   @Get('vercel/deployments/:deploymentId/logs')
   @UseGuards(JwtAuthGuard)
@@ -94,15 +101,6 @@ export class IntegrationsController {
     }
   }
 
-  @Get('github/checks/:projectId')
-  @UseGuards(JwtAuthGuard)
-  getGithubChecks(
-    @GetUser() user: User,
-    @Param('projectId') projectId: string,
-  ) {
-    return this.integrationsService.getGithubChecks(user.id, projectId);
-  }
-
   @Delete('vercel')
   @UseGuards(JwtAuthGuard)
   disconnectVercel(@GetUser() user: User) {
@@ -128,5 +126,30 @@ export class IntegrationsController {
     @Body('fileType') fileType: string,
   ) {
     return this.integrationsService.createAvatarUploadUrl(user.id, fileType);
+  }
+
+  @Post('vercel/deployments/:deploymentId/redeploy')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK) // Используем POST, но возвращаем 200 OK для удобства
+  redeployVercelDeployment(
+    @GetUser() user: User,
+    @Param('deploymentId') deploymentId: string,
+  ) {
+    return this.integrationsService.redeployVercelDeployment(
+      user.id,
+      deploymentId,
+    );
+  }
+
+  @Patch('vercel/deployments/:deploymentId/cancel') // Используем PATCH, т.к. изменяем состояние
+  @UseGuards(JwtAuthGuard)
+  cancelVercelDeployment(
+    @GetUser() user: User,
+    @Param('deploymentId') deploymentId: string,
+  ) {
+    return this.integrationsService.cancelVercelDeployment(
+      user.id,
+      deploymentId,
+    );
   }
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useApi } from "@/hooks/useApi";
-import { useRequireAuth } from "@/hooks/useRequireAuth"; // <-- ХУК
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
+import useSWR from "swr"; // <-- ВАЖНЫЙ ИМПОРТ
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -44,9 +45,9 @@ import {
 import { AddProjectForm } from "@/components/AddProjectForm";
 import Link from "next/link";
 import { LinkVercelDialog } from "@/components/LinkVercelDialog";
-import { DashboardDeploymentStatus } from "@/components/DashboardDeploymentStatus.tsx";
+import DashboardDeploymentStatus from "@/components/DashboardDeploymentStatus";
 import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
-import { GithubChecksStatus } from "@/components/GithubChecksStatus";
+import GithubChecksStatus from "@/components/GithubChecksStatus";
 import { ImportVercelDialog } from "@/components/ImportVercelDialog";
 
 interface Project {
@@ -54,66 +55,44 @@ interface Project {
     name: string;
     gitUrl: string;
     vercelProjectId?: string | null;
+    deploymentStatus: any; // Используем any для простоты
+    checksStatus: any;
 }
 
 export default function DashboardPage() {
     const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
-
     const { setToken } = useAuth();
     const { api } = useApi();
 
-    const [projects, setProjects] = useState<Project[]>([]);
+    // --- ЕДИНСТВЕННЫЙ ИСТОЧНИК ДАННЫХ О ПРОЕКТАХ ---
+    const fetcher = (url: string) => api(url);
+    const {
+        data: projects,
+        error,
+        isLoading: isLoadingData,
+        mutate,
+    } = useSWR<Project[]>(isAuthenticated ? "/projects" : null, fetcher, {
+        refreshInterval: 15000,
+        onError: (err) => {
+            toast.error(`Failed to fetch projects: ${err.message}`);
+        },
+    });
+
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(
         null
     );
     const [projectToLink, setProjectToLink] = useState<Project | null>(null);
-
-    const [isLoadingData, setIsLoadingData] = useState(true);
-    // Состояние для открытия/закрытия модального окна
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-
-    useEffect(() => {
-        // Загружаем проекты, только если пользователь точно аутентифицирован
-        if (isAuthenticated) {
-            const fetchProjects = async () => {
-                setIsLoadingData(true);
-                try {
-                    const data = await api("/projects");
-
-                    setProjects(data);
-                } catch (error: any) {
-                    toast.error(`Failed to fetch projects: ${error.message}`);
-                } finally {
-                    setIsLoadingData(false);
-                }
-            };
-            fetchProjects();
-        }
-    }, [isAuthenticated, api]);
 
     const handleLogout = () => {
         setToken(null);
         // Редирект произойдет автоматически благодаря useRequireAuth
     };
 
-    const handleProjectAdded = (newProject: Project) => {
-        // Перед добавлением проверяем, нет ли уже проекта с таким ID в списке
-        setProjects((currentProjects) => {
-            if (currentProjects.some((p) => p.id === newProject.id)) {
-                return currentProjects; // Если есть - ничего не меняем
-            }
-            return [...currentProjects, newProject]; // Если нет - добавляем
-        });
-    };
-
-    const handleProjectUpdated = (updatedProject: Project) => {
-        setProjects((currentProjects) =>
-            currentProjects.map((p) =>
-                p.id === updatedProject.id ? updatedProject : p
-            )
-        );
+    const handleProjectAddedOrUpdated = () => {
+        mutate();
     };
 
     const handleDeleteProject = async () => {
@@ -126,9 +105,10 @@ export default function DashboardPage() {
         toast.promise(promise, {
             loading: "Deleting project...",
             success: () => {
-                // Удаляем проект из списка на клиенте
-                setProjects((projects) =>
-                    projects.filter((p) => p.id !== projectToDelete.id)
+                // Вместо ручного изменения стейта, мы оптимистично обновляем данные SWR
+                mutate(
+                    projects?.filter((p) => p.id !== projectToDelete.id),
+                    false // Не делать ревалидацию, мы уже уверены в результате
                 );
                 setProjectToDelete(null); // Закрываем диалог
                 return "Project deleted successfully!";
@@ -152,10 +132,10 @@ export default function DashboardPage() {
             <header className="flex flex-wrap md:flex-nowrap justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Your Dashboard</h1>
                 <div className="flex w-full justify-between items-center mt-3 md:mt-0 gap-2 md:w-auto md:justify-start md:gap-4">
-                    {projects.length > 0 && (
+                    {projects && projects.length > 0 && (
                         <Button onClick={() => setIsImportDialogOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
-                            Add New
+                            Import Projects
                         </Button>
                     )}
                     {/* Кнопка, открывающая модальное окно */}
@@ -169,8 +149,11 @@ export default function DashboardPage() {
                         }}
                     >
                         <DialogTrigger asChild>
-                            <Button onClick={() => setIsDialogOpen(true)}>
-                                Add New Project
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsDialogOpen(true)}
+                            >
+                                Add Manually
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
@@ -192,8 +175,8 @@ export default function DashboardPage() {
                                 key={
                                     projectToEdit ? projectToEdit.id : "create"
                                 }
-                                onProjectAdded={handleProjectAdded}
-                                onProjectUpdated={handleProjectUpdated}
+                                onProjectAdded={handleProjectAddedOrUpdated}
+                                onProjectUpdated={handleProjectAddedOrUpdated}
                                 projectToEdit={projectToEdit} // <-- Передаем данные для редактирования
                                 onClose={() => {
                                     setIsDialogOpen(false);
@@ -267,119 +250,139 @@ export default function DashboardPage() {
                         <CardTitle>My Projects</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {isLoadingData ? (
-                            <ProjectListSkeleton />
-                        ) : projects.length > 0 ? (
-                            <ul className="space-y-4">
-                                {projects.map((project) => (
-                                    <li
-                                        key={project.id}
-                                        className="flex flex-wrap items-center justify-between rounded-lg border p-4"
+                        {isLoadingData && <ProjectListSkeleton />}
+
+                        {error && (
+                            <p className="text-red-500 text-center py-8">
+                                Failed to load projects. Please try again later.
+                            </p>
+                        )}
+
+                        {!isLoadingData &&
+                            !error &&
+                            projects &&
+                            projects.length === 0 && (
+                                <div className="text-center py-12">
+                                    <h3 className="font-semibold text-lg">
+                                        No projects found
+                                    </h3>
+                                    <p className="text-muted-foreground mt-1 mb-4">
+                                        Get started by importing your projects
+                                        from Vercel.
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            setIsImportDialogOpen(true)
+                                        }
                                     >
-                                        <Link
-                                            href={`/project/${project.id}`}
-                                            className="flex-grow"
+                                        Import from Vercel
+                                    </Button>
+                                </div>
+                            )}
+
+                        {!isLoadingData &&
+                            !error &&
+                            projects &&
+                            projects.length > 0 && (
+                                <ul className="space-y-4">
+                                    {projects.map((project) => (
+                                        <li
+                                            key={project.id}
+                                            className="flex flex-wrap items-center justify-between rounded-lg border p-4"
                                         >
-                                            <div>
-                                                <p className="font-semibold text-lg hover:underline">
-                                                    {project.name}
-                                                </p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {project.gitUrl}
-                                                </p>
-                                            </div>
-                                        </Link>
+                                            <Link
+                                                href={`/project/${project.id}`}
+                                                className="flex-grow"
+                                            >
+                                                <div>
+                                                    <p className="font-semibold text-lg hover:underline">
+                                                        {project.name}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {project.gitUrl}
+                                                    </p>
+                                                </div>
+                                            </Link>
 
-                                        <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-4">
-                                            <GithubChecksStatus
-                                                projectId={project.id}
-                                                gitUrl={project.gitUrl}
-                                            />
-                                            {project.vercelProjectId ? (
-                                                // Если проект связан, показываем компонент статуса
-                                                <DashboardDeploymentStatus
-                                                    projectId={project.id}
+                                            <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-4">
+                                                <GithubChecksStatus
+                                                    checksStatus={
+                                                        project.checksStatus
+                                                    }
                                                 />
-                                            ) : (
-                                                // Иначе показываем кнопку "Link"
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation(); // <-- Останавливаем "всплытие" клика
-                                                        setProjectToLink(
-                                                            project
-                                                        );
-                                                    }}
-                                                >
-                                                    Link to Vercel
-                                                </Button>
-                                            )}
-
-                                            {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
+                                                {project.vercelProjectId ? (
+                                                    // Если проект связан, показываем компонент статуса
+                                                    <DashboardDeploymentStatus
+                                                        deploymentStatus={
+                                                            project.deploymentStatus
+                                                        }
+                                                    />
+                                                ) : (
+                                                    // Иначе показываем кнопку "Link"
                                                     <Button
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0"
-                                                    >
-                                                        <span className="sr-only">
-                                                            Open menu
-                                                        </span>
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>
-                                                        Actions
-                                                    </DropdownMenuLabel>
-                                                    <DropdownMenuItem
-                                                        onClick={() => {
-                                                            setProjectToEdit(
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setProjectToLink(
                                                                 project
-                                                            ); // <-- Сохраняем проект для редактирования
-                                                            setIsDialogOpen(
-                                                                true
                                                             );
                                                         }}
                                                     >
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-red-600"
-                                                        onClick={() =>
-                                                            setProjectToDelete(
-                                                                project
-                                                            )
-                                                        } // <-- Устанавливаем проект для удаления
+                                                        Link to Vercel
+                                                    </Button>
+                                                )}
+
+                                                {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger
+                                                        asChild
                                                     >
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            // === БЛОК ДЛЯ ПУСТОГО СОСТОЯНИЯ ===
-                            <div className="text-center py-12">
-                                <h3 className="font-semibold text-lg">
-                                    No projects found
-                                </h3>
-                                <p className="text-muted-foreground mt-1 mb-4">
-                                    Get started by importing your projects from
-                                    Vercel.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setIsImportDialogOpen(true)}
-                                >
-                                    Import from Vercel
-                                </Button>
-                            </div>
-                        )}
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="h-8 w-8 p-0"
+                                                        >
+                                                            <span className="sr-only">
+                                                                Open menu
+                                                            </span>
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>
+                                                            Actions
+                                                        </DropdownMenuLabel>
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                setProjectToEdit(
+                                                                    project
+                                                                ); // <-- Сохраняем проект для редактирования
+                                                                setIsDialogOpen(
+                                                                    true
+                                                                );
+                                                            }}
+                                                        >
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-red-600"
+                                                            onClick={() =>
+                                                                setProjectToDelete(
+                                                                    project
+                                                                )
+                                                            } // <-- Устанавливаем проект для удаления
+                                                        >
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                     </CardContent>
                 </Card>
             </main>
@@ -408,14 +411,13 @@ export default function DashboardPage() {
             <LinkVercelDialog
                 projectToLink={projectToLink}
                 onClose={() => setProjectToLink(null)}
-                onLinked={handleProjectUpdated}
+                onLinked={handleProjectAddedOrUpdated}
             />
 
             <ImportVercelDialog
                 isOpen={isImportDialogOpen}
                 onClose={() => setIsImportDialogOpen(false)}
-                onProjectImported={handleProjectAdded} // Он добавит проект в список
-                existingProjects={projects} // Передаем, чтобы отфильтровать уже добавленные
+                onProjectImported={handleProjectAddedOrUpdated} // Он добавит проект в список
             />
         </div>
     );
