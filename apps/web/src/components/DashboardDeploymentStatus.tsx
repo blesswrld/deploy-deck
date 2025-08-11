@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { GitCommitHorizontal, GitBranch } from "lucide-react";
+import { VercelLogo } from "./ui/icons";
 
 interface DeploymentData {
     status:
@@ -12,8 +12,6 @@ interface DeploymentData {
         | "CANCELED"
         | "NOT_DEPLOYED"
         | "NOT_LINKED";
-    branch: string | null;
-    commit: string | null;
 }
 
 interface DashboardDeploymentStatusProps {
@@ -37,16 +35,15 @@ function DashboardDeploymentStatus({
     if (!deploymentStatus) {
         return (
             <div className="flex items-center gap-2">
-                {" "}
                 <span
                     className={cn(
                         "h-2 w-2 rounded-full",
                         statusStyles["LOADING"]
                     )}
-                />{" "}
+                />
                 <span className="capitalize text-xs text-muted-foreground">
                     Loading...
-                </span>{" "}
+                </span>
             </div>
         );
     }
@@ -54,29 +51,14 @@ function DashboardDeploymentStatus({
     const status = deploymentStatus.status;
 
     return (
-        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            {deploymentStatus.branch && (
-                <div className="flex items-center gap-1">
-                    <GitBranch className="h-3 w-3" />
-                    <span>{deploymentStatus.branch}</span>
-                </div>
-            )}
-            {deploymentStatus.commit && (
-                <div className="flex items-center gap-1">
-                    <GitCommitHorizontal className="h-3 w-3" />
-                    <span className="font-mono">
-                        {deploymentStatus.commit.slice(0, 7)}
-                    </span>
-                </div>
-            )}
-            <div className="flex items-center gap-2">
-                <span
-                    className={cn("h-2 w-2 rounded-full", statusStyles[status])}
-                />
-                <span className="capitalize">
-                    {status.toLowerCase().replace("_", " ")}
-                </span>
-            </div>
+        <div className="flex items-center gap-4">
+            <VercelLogo className="h-3 w-3" />
+            <span
+                className={cn("h-2 w-2 rounded-full", statusStyles[status])}
+            />
+            <span className="capitalize text-xs">
+                {status.toLowerCase().replace("_", " ")}
+            </span>
         </div>
     );
 }

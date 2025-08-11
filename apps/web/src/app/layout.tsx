@@ -4,6 +4,8 @@ import "./globals.css";
 // Импортируем Toaster, который является оберткой над Sonner
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +24,9 @@ export default function RootLayout({
             {/* dark для темной темы по умолчанию */}
             <body className={inter.className}>
                 <AuthProvider>
-                    {children}
+                    <TooltipProvider>
+                        <AnimatedBackground>{children}</AnimatedBackground>
+                    </TooltipProvider>
                     <Toaster />
                 </AuthProvider>
             </body>

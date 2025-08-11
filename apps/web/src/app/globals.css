@@ -69,12 +69,17 @@
         --chart-3: 30 80% 55%;
         --chart-4: 280 65% 60%;
         --chart-5: 340 75% 55%;
+        /* --card: hsla(0, 0%, 0%, 0.5); */
+        /* --card: 222.2 84% 4.9% / 0.6; 60% непрозрачности
+        --border: 210 40% 98% / 0.1; */
+        --card: 222.2 84% 4.9% / 0.85; /* <-- 85% непрозрачности */
+        --border: 217.2 32.6% 17.5%;
     }
     * {
         @apply border-border ring-0 ring-offset-0;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply text-foreground;
     }
 }
 

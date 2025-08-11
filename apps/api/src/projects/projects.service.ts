@@ -70,7 +70,20 @@ export class ProjectsService {
           commitSha,
         );
 
-        return { ...project, deploymentStatus, checksStatus };
+        const finalDeploymentStatus = deploymentStatus
+          ? {
+              ...deploymentStatus,
+              commit: deploymentStatus.commit
+                ? deploymentStatus.commit.slice(0, 7)
+                : null,
+            }
+          : null;
+
+        return {
+          ...project,
+          deploymentStatus: finalDeploymentStatus,
+          checksStatus,
+        };
       }),
     );
 

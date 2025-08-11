@@ -17,6 +17,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+    GitBranch,
+    GitCommitHorizontal,
     LogOut,
     MoreHorizontal,
     MoreVertical,
@@ -31,6 +33,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuPortal, // <-- ИМПОРТИРУЕМ ПОРТАЛ
 } from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
@@ -49,6 +52,7 @@ import DashboardDeploymentStatus from "@/components/DashboardDeploymentStatus";
 import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
 import GithubChecksStatus from "@/components/GithubChecksStatus";
 import { ImportVercelDialog } from "@/components/ImportVercelDialog";
+import { GithubLogo } from "@/components/ui/icons";
 
 interface Project {
     id: string;
@@ -129,7 +133,7 @@ export default function DashboardPage() {
     // Основной интерфейс
     return (
         <div className="container mx-auto  p-4 md:p-8">
-            <header className="flex flex-wrap md:flex-nowrap justify-between items-center mb-8">
+            <header className="relative z-10 flex flex-wrap md:flex-nowrap justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Your Dashboard</h1>
                 <div className="flex w-full justify-between items-center mt-3 md:mt-0 gap-2 md:w-auto md:justify-start md:gap-4">
                     {projects && projects.length > 0 && (
@@ -195,33 +199,36 @@ export default function DashboardPage() {
                                     <span className="sr-only">Open menu</span>
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                    <Link
-                                        href="/profile"
-                                        className="flex items-center w-full"
+
+                            <DropdownMenuPortal>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <Link
+                                            href="/profile"
+                                            className="flex items-center w-full"
+                                        >
+                                            <UserCircle className="mr-2 h-4 w-4" />
+                                            <span>Profile</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link
+                                            href="/settings"
+                                            className="flex items-center w-full"
+                                        >
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            <span>Settings</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={handleLogout}
+                                        className="text-red-500 focus:text-red-500"
                                     >
-                                        <UserCircle className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link
-                                        href="/settings"
-                                        className="flex items-center w-full"
-                                    >
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        <span>Settings</span>
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={handleLogout}
-                                    className="text-red-500 focus:text-red-500"
-                                >
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    <span>Log Out</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        <span>Log Out</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenuPortal>
                         </DropdownMenu>
                     </div>
 
@@ -245,7 +252,7 @@ export default function DashboardPage() {
                 </div>
             </header>
             <main>
-                <Card>
+                <Card className="bg-card/80 border-white/10">
                     <CardHeader>
                         <CardTitle>My Projects</CardTitle>
                     </CardHeader>
@@ -289,29 +296,89 @@ export default function DashboardPage() {
                                     {projects.map((project) => (
                                         <li
                                             key={project.id}
-                                            className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-4 gap-4"
+                                            className="flex flex-col rounded-lg border bg-card/85 border-white/10 transition-colors hover:bg-white/5"
                                         >
-                                            <Link
-                                                href={`/project/${project.id}`}
-                                                className="flex-grow w-full sm:w-auto"
-                                            >
-                                                <div>
-                                                    <p className="font-semibold text-lg hover:underline">
-                                                        {project.name}
-                                                    </p>
-                                                    <p className="text-sm text-muted-foreground truncate">
-                                                        {project.gitUrl}
-                                                    </p>
-                                                </div>
-                                            </Link>
+                                            {/* Верхняя часть: Название и Меню */}
+                                            <div className="flex items-center justify-between p-4">
+                                                <Link
+                                                    href={`/project/${project.id}`}
+                                                    className="flex-grow min-w-0" // Позволяет тексту сокращаться
+                                                >
+                                                    <div>
+                                                        <p className="font-semibold text-lg hover:underline truncate">
+                                                            {project.name}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground truncate">
+                                                            {project.gitUrl}
+                                                        </p>
+                                                    </div>
+                                                </Link>
+                                                <div className="pl-4">
+                                                    {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger
+                                                            asChild
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                className="h-8 w-8 p-0"
+                                                            >
+                                                                <span className="sr-only">
+                                                                    Open menu
+                                                                </span>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
 
-                                            <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
+                                                        <DropdownMenuPortal>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>
+                                                                    Actions
+                                                                </DropdownMenuLabel>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => {
+                                                                        setProjectToEdit(
+                                                                            project
+                                                                        );
+                                                                        setIsDialogOpen(
+                                                                            true
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    className="text-red-600"
+                                                                    onClick={() =>
+                                                                        setProjectToDelete(
+                                                                            project
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenuPortal>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </div>
+
+                                            {/* Нижняя часть: Статусы */}
+                                            <div className="flex flex-wrap items-center justify-between border-t border-white/10 px-4 py-2 gap-y-3 text-xs text-muted-foreground">
+                                                {/* Левая группа: GitHub + Vercel Status */}
                                                 <div className="flex items-center gap-4">
-                                                    <GithubChecksStatus
-                                                        checksStatus={
-                                                            project.checksStatus
-                                                        }
-                                                    />
+                                                    {/* Группа для GitHub */}
+                                                    <div className="flex items-center gap-2">
+                                                        <GithubLogo className="h-4 w-4" />
+                                                        <GithubChecksStatus
+                                                            checksStatus={
+                                                                project.checksStatus
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    {/* Группа для Vercel */}
                                                     {project.vercelProjectId ? (
                                                         <DashboardDeploymentStatus
                                                             deploymentStatus={
@@ -333,50 +400,37 @@ export default function DashboardPage() {
                                                         </Button>
                                                     )}
                                                 </div>
-                                                {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger
-                                                        asChild
-                                                    >
-                                                        <Button
-                                                            variant="ghost"
-                                                            className="h-8 w-8 p-0"
-                                                        >
-                                                            <span className="sr-only">
-                                                                Open menu
+
+                                                {/* Правая группа: Ветка и Коммит */}
+                                                {project.deploymentStatus
+                                                    ?.branch && (
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex items-center gap-1">
+                                                            <GitBranch className="h-3 w-3" />
+                                                            <span>
+                                                                {
+                                                                    project
+                                                                        .deploymentStatus
+                                                                        .branch
+                                                                }
                                                             </span>
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>
-                                                            Actions
-                                                        </DropdownMenuLabel>
-                                                        <DropdownMenuItem
-                                                            onClick={() => {
-                                                                setProjectToEdit(
-                                                                    project
-                                                                ); // <-- Сохраняем проект для редактирования
-                                                                setIsDialogOpen(
-                                                                    true
-                                                                );
-                                                            }}
-                                                        >
-                                                            Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-red-600"
-                                                            onClick={() =>
-                                                                setProjectToDelete(
-                                                                    project
-                                                                )
-                                                            } // <-- Устанавливаем проект для удаления
-                                                        >
-                                                            Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                        </div>
+                                                        {project
+                                                            .deploymentStatus
+                                                            ?.commit && (
+                                                            <div className="flex items-center gap-1">
+                                                                <GitCommitHorizontal className="h-3 w-3" />
+                                                                <span className="font-mono">
+                                                                    {
+                                                                        project
+                                                                            .deploymentStatus
+                                                                            .commit
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </li>
                                     ))}
