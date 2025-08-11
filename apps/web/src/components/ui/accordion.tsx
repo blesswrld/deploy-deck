@@ -45,7 +45,7 @@ const AccordionTrigger = React.forwardRef<
             {children}
             {/* 3. Оборачиваем иконку в условие */}
             {!isNotDeployed && (
-                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 hidden md:block" />
             )}
         </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>

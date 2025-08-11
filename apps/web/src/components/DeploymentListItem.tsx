@@ -88,8 +88,11 @@ export function DeploymentListItem({
                 >
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-4 mr-2.5 md:mr-0">
                         {/* Левая часть */}
-                        <div className="flex-grow">
-                            <div className="font-medium">
+                        <div className="flex-grow flex-wrap w-full break-words">
+                            <div
+                                className="font-medium"
+                                title={deployment.message}
+                            >
                                 {deployment.message}
                             </div>
                             <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-1">

@@ -65,7 +65,7 @@ export default function ProfilePage() {
                     <ProfileSkeleton />
                 ) : (
                     <Card>
-                        <CardHeader className="flex flex-row items-center gap-4">
+                        <CardHeader className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
                             <Avatar className="h-20 w-20">
                                 <AvatarImage
                                     src={user.avatarUrl ?? undefined}
@@ -77,10 +77,12 @@ export default function ProfilePage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div>
-                                <CardTitle className="text-2xl">
+                                <CardTitle className="text-2xl break-words">
                                     {user.name || user.email}
                                 </CardTitle>
-                                <CardDescription>{user.email}</CardDescription>
+                                <CardDescription className="break-words">
+                                    {user.email}
+                                </CardDescription>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">

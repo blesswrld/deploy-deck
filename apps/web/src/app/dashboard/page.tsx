@@ -289,51 +289,50 @@ export default function DashboardPage() {
                                     {projects.map((project) => (
                                         <li
                                             key={project.id}
-                                            className="flex flex-wrap items-center justify-between rounded-lg border p-4"
+                                            className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-4 gap-4"
                                         >
                                             <Link
                                                 href={`/project/${project.id}`}
-                                                className="flex-grow"
+                                                className="flex-grow w-full sm:w-auto"
                                             >
                                                 <div>
                                                     <p className="font-semibold text-lg hover:underline">
                                                         {project.name}
                                                     </p>
-                                                    <p className="text-sm text-muted-foreground">
+                                                    <p className="text-sm text-muted-foreground truncate">
                                                         {project.gitUrl}
                                                     </p>
                                                 </div>
                                             </Link>
 
-                                            <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-4">
-                                                <GithubChecksStatus
-                                                    checksStatus={
-                                                        project.checksStatus
-                                                    }
-                                                />
-                                                {project.vercelProjectId ? (
-                                                    // Если проект связан, показываем компонент статуса
-                                                    <DashboardDeploymentStatus
-                                                        deploymentStatus={
-                                                            project.deploymentStatus
+                                            <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
+                                                <div className="flex items-center gap-4">
+                                                    <GithubChecksStatus
+                                                        checksStatus={
+                                                            project.checksStatus
                                                         }
                                                     />
-                                                ) : (
-                                                    // Иначе показываем кнопку "Link"
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setProjectToLink(
-                                                                project
-                                                            );
-                                                        }}
-                                                    >
-                                                        Link to Vercel
-                                                    </Button>
-                                                )}
-
+                                                    {project.vercelProjectId ? (
+                                                        <DashboardDeploymentStatus
+                                                            deploymentStatus={
+                                                                project.deploymentStatus
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setProjectToLink(
+                                                                    project
+                                                                );
+                                                            }}
+                                                        >
+                                                            Link to Vercel
+                                                        </Button>
+                                                    )}
+                                                </div>
                                                 {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger
