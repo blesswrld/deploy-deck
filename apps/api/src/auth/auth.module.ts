@@ -16,7 +16,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
       useFactory: async (configService: ConfigService) => ({
         // Получаем секрет из переменных окружения
         secret: configService.get<string>('SECRET_KEY'),
-        signOptions: { expiresIn: '1d' },
+        signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService], // Инжектируем ConfigService в нашу фабрику
     }),

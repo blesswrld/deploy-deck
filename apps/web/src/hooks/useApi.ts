@@ -30,8 +30,8 @@ export const useApi = () => {
             });
 
             if (response.status === 401) {
-                // setToken(null);
-                // window.location.reload();
+                setToken(null);
+                window.location.reload();
                 // Эта ошибка все равно не будет показана из-за перезагрузки.
                 throw new Error("Session expired. Please log in again.");
             }

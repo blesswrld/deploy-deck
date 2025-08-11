@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Проект, готовый к импорту
 interface ImportableProject {
@@ -33,31 +34,26 @@ export function ImportVercelDialog({
 }: ImportVercelDialogProps) {
     const { api } = useApi();
     const [projects, setProjects] = useState<ImportableProject[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { isLoading: isAuthLoading } = useAuth();
 
     useEffect(() => {
-        if (isOpen) {
-            setIsLoading(true);
-            setProjects([]);
-
-            api("/integrations/vercel/importable-projects")
-                .then(setProjects)
-                .catch((err) => {
-                    // Теперь этот .catch будет ловить ошибку 403 и другие, но не 401.
-                    toast.error("Could not fetch Vercel projects", {
-                        description: err.message, // err.message теперь будет "Vercel account is not connected." или "Invalid or rate-limited..."
-                        action: {
-                            label: "Go to Settings",
-                            onClick: () => {
-                                window.location.href = "/settings";
-                            },
-                        },
-                    });
-                    onClose(); // Закрываем диалог после ошибки
-                })
-                .finally(() => setIsLoading(false));
+        // Добавляем ключевую проверку:
+        // Не делаем запрос, если диалог закрыт ИЛИ если аутентификация еще не загрузилась.
+        if (!isOpen || isAuthLoading) {
+            return;
         }
-    }, [isOpen, api, onClose]);
+
+        setProjects([]); // Очищаем список перед новым запросом
+
+        api("/integrations/vercel/importable-projects")
+            .then(setProjects)
+            .catch((err) => {
+                toast.error("Could not fetch Vercel projects", {
+                    description: err.message,
+                });
+                onClose();
+            });
+    }, [isOpen, isAuthLoading, api, onClose]); // <-- Добавляем isAuthLoading в зависимости
 
     const handleImport = (project: ImportableProject) => {
         // Мы передаем все данные, полученные от нашего эндпоинта, на /projects
@@ -99,7 +95,7 @@ export function ImportVercelDialog({
                         Select a project to import into Deploy-Deck.
                     </DialogDescription>
                 </DialogHeader>
-                {isLoading ? (
+                {isAuthLoading ? (
                     <p>Loading Vercel projects...</p>
                 ) : (
                     <div
