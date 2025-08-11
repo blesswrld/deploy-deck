@@ -477,4 +477,113 @@ export class IntegrationsService {
     }
     return data;
   }
+
+  async redeployVercelDeployment(userId: string, deploymentId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.vercelApiToken) {
+      throw new ForbiddenException('Vercel account is not configured.');
+    }
+
+    const vercelToken = this.encryptionService.decrypt(user.vercelApiToken);
+
+    // 1. Получаем данные об оригинальном деплое, чтобы взять из него информацию
+    const originalDeploymentResponse = await axios
+      .get(`https://api.vercel.com/v13/deployments/${deploymentId}`, {
+        headers: { Authorization: `Bearer ${vercelToken}` },
+      })
+      .catch((err) => {
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          throw new NotFoundException(
+            'Original deployment to redeploy from not found.',
+          );
+        }
+        throw err;
+      });
+
+    const originalDeployment = originalDeploymentResponse.data;
+    const projectName = originalDeployment.name;
+
+    // 2. ЯВНО ФОРМИРУЕМ ОБЪЕКТ gitSource
+    // Нам нужны тип, ссылка на репозиторий и ветка/коммит (ref)
+    const gitSource = {
+      type: originalDeployment.meta?.githubDeployment ? 'github' : 'gitlab', // или другая логика определения типа
+      repoId: originalDeployment.meta?.githubRepoId,
+      ref:
+        originalDeployment.meta?.githubCommitRef ||
+        originalDeployment.meta?.gitCommitRef,
+      sha:
+        originalDeployment.meta?.githubCommitSha ||
+        originalDeployment.meta?.gitCommitSha,
+    };
+
+    // Проверяем, что у нас есть все необходимое для редеплоя
+    if (!gitSource.ref || !gitSource.sha) {
+      throw new ForbiddenException(
+        'Cannot redeploy: original deployment is not linked to a specific Git commit.',
+      );
+    }
+
+    try {
+      // 3. Отправляем запрос с правильно сформированным телом
+      const response = await axios.post(
+        `https://api.vercel.com/v13/deployments`,
+        {
+          name: projectName,
+          gitSource: gitSource, // Используем наш новый объект
+        },
+        { headers: { Authorization: `Bearer ${vercelToken}` } },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 400) {
+          console.error('Vercel API Bad Request:', error.response.data);
+          throw new ForbiddenException(
+            `Vercel API Error: ${error.response.data.error?.message || 'Bad Request'}`,
+          );
+        }
+        if (error.response.status === 403)
+          throw new ForbiddenException('Invalid Vercel API token.');
+        if (error.response.status === 404)
+          throw new NotFoundException('Project not found on Vercel.');
+      }
+      console.error('Failed to redeploy on Vercel:', error);
+      throw new Error('Failed to redeploy on Vercel.');
+    }
+  }
+
+  async cancelVercelDeployment(userId: string, deploymentId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.vercelApiToken) {
+      throw new ForbiddenException('Vercel account is not configured.');
+    }
+
+    const vercelToken = this.encryptionService.decrypt(user.vercelApiToken);
+
+    try {
+      // Vercel API для отмены деплоя
+      const response = await axios.patch(
+        `https://api.vercel.com/v12/deployments/${deploymentId}/cancel`,
+        {}, // Тело запроса пустое
+        {
+          headers: {
+            Authorization: `Bearer ${vercelToken}`,
+          },
+        },
+      );
+      // Возвращаем обновленные данные деплоя (теперь он будет в статусе CANCELED)
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        if (error.response.status === 403)
+          throw new ForbiddenException('Invalid Vercel API token.');
+        // Vercel может вернуть 409 Conflict, если деплой уже завершен
+        if (error.response.status === 409)
+          throw new ConflictException(
+            'Deployment cannot be canceled as it is already completed.',
+          );
+      }
+      throw new Error('Failed to cancel deployment on Vercel.');
+    }
+  }
 }

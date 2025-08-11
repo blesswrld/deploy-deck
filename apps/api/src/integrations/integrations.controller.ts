@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Post,
+  Patch,
   UseGuards,
   Get,
   Param,
@@ -128,5 +129,30 @@ export class IntegrationsController {
     @Body('fileType') fileType: string,
   ) {
     return this.integrationsService.createAvatarUploadUrl(user.id, fileType);
+  }
+
+  @Post('vercel/deployments/:deploymentId/redeploy')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK) // Используем POST, но возвращаем 200 OK для удобства
+  redeployVercelDeployment(
+    @GetUser() user: User,
+    @Param('deploymentId') deploymentId: string,
+  ) {
+    return this.integrationsService.redeployVercelDeployment(
+      user.id,
+      deploymentId,
+    );
+  }
+
+  @Patch('vercel/deployments/:deploymentId/cancel') // Используем PATCH, т.к. изменяем состояние
+  @UseGuards(JwtAuthGuard)
+  cancelVercelDeployment(
+    @GetUser() user: User,
+    @Param('deploymentId') deploymentId: string,
+  ) {
+    return this.integrationsService.cancelVercelDeployment(
+      user.id,
+      deploymentId,
+    );
   }
 }

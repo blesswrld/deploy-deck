@@ -38,11 +38,6 @@ export default function SettingsPage() {
         fetcher
     );
 
-    console.log(
-        "Settings page rendered. Search params:",
-        searchParams.toString()
-    );
-
     useEffect(() => {
         const githubStatus = searchParams.get("github-status");
         const message = searchParams.get("message");
