@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+import { AppLoader } from "./AppLoader";
 
 // Проект, готовый к импорту
 interface ImportableProject {
@@ -34,26 +34,27 @@ export function ImportVercelDialog({
 }: ImportVercelDialogProps) {
     const { api } = useApi();
     const [projects, setProjects] = useState<ImportableProject[]>([]);
-    const { isLoading: isAuthLoading } = useAuth();
+    // СОСТОЯНИЕ ДЛЯ ЗАГРУЗКИ ПРОЕКТОВ
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Добавляем ключевую проверку:
-        // Не делаем запрос, если диалог закрыт ИЛИ если аутентификация еще не загрузилась.
-        if (!isOpen || isAuthLoading) {
-            return;
-        }
+        if (isOpen) {
+            setIsLoading(true); // Включаем лоадер при каждом открытии
+            setProjects([]);
 
-        setProjects([]); // Очищаем список перед новым запросом
-
-        api("/integrations/vercel/importable-projects")
-            .then(setProjects)
-            .catch((err) => {
-                toast.error("Could not fetch Vercel projects", {
-                    description: err.message,
+            api("/integrations/vercel/importable-projects")
+                .then(setProjects)
+                .catch((err) => {
+                    toast.error("Could not fetch Vercel projects", {
+                        description: err.message,
+                    });
+                    onClose();
+                })
+                .finally(() => {
+                    setIsLoading(false); // Выключаем лоадер после завершения запроса
                 });
-                onClose();
-            });
-    }, [isOpen, isAuthLoading, api, onClose]); // <-- Добавляем isAuthLoading в зависимости
+        }
+    }, [isOpen, api, onClose]);
 
     const handleImport = (project: ImportableProject) => {
         // Мы передаем все данные, полученные от нашего эндпоинта, на /projects
@@ -95,8 +96,13 @@ export function ImportVercelDialog({
                         Select a project to import into Deploy-Deck.
                     </DialogDescription>
                 </DialogHeader>
-                {isAuthLoading ? (
-                    <p>Loading Vercel projects...</p>
+
+                {/* ЛОАДЕР */}
+                {isLoading ? (
+                    // Используем AppLoader с вариантом 'dots'
+                    <div className="h-64 flex items-center justify-center">
+                        <AppLoader variant="dots" text="Fetching projects..." />
+                    </div>
                 ) : (
                     <div
                         className="max-h-80 overflow-y-auto space-y-2 pr-2 

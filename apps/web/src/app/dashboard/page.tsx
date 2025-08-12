@@ -29,6 +29,8 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
     DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
@@ -263,21 +265,48 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="hidden md:flex items-center gap-4">
-                        <Link href="/profile">
-                            <Button variant="ghost" size="icon">
-                                <UserCircle className="h-5 w-5" />
-                                <span className="sr-only">Profile</span>
-                            </Button>
-                        </Link>
-                        <Link href="/settings">
-                            <Button variant="ghost" size="icon">
-                                <Settings className="h-5 w-5" />
-                                <span className="sr-only">Settings</span>
-                            </Button>
-                        </Link>
-                        <Button onClick={handleLogout} variant="outline">
-                            Log Out
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <UserCircle className="h-5 w-5" />
+                                    <span className="sr-only">User Menu</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuPortal>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>
+                                        My Account
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem asChild>
+                                        <Link
+                                            href="/profile"
+                                            className="cursor-pointer"
+                                        >
+                                            <UserCircle className="mr-2 h-4 w-4" />
+                                            <span>Profile</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link
+                                            href="/settings"
+                                            className="cursor-pointer"
+                                        >
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            <span>Settings</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={handleLogout}
+                                        className="text-red-500 focus:text-red-500 cursor-pointer"
+                                    >
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        <span>Log Out</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenu>
                     </div>
                 </div>
             </header>
@@ -322,29 +351,11 @@ export default function DashboardPage() {
                             !error &&
                             projects &&
                             projects.length > 0 && (
-                                <motion.ul
-                                    className="space-y-4"
-                                    variants={{
-                                        visible: {
-                                            transition: {
-                                                staggerChildren: 0.05,
-                                            },
-                                        },
-                                    }}
-                                    initial="hidden"
-                                    animate="visible"
-                                >
+                                <ul className="space-y-4">
                                     {projects.map((project) => (
                                         <ProjectListItem
                                             key={project.id}
                                             project={project}
-                                            isLastUpdated={
-                                                lastUpdatedProjectId ===
-                                                project.id
-                                            }
-                                            onAnimationComplete={() =>
-                                                setLastUpdatedProjectId(null)
-                                            }
                                             setProjectToEdit={setProjectToEdit}
                                             setProjectToDelete={
                                                 setProjectToDelete
@@ -353,7 +364,7 @@ export default function DashboardPage() {
                                             setIsDialogOpen={setIsDialogOpen}
                                         />
                                     ))}
-                                </motion.ul>
+                                </ul>
                             )}
                     </CardContent>
                 </Card>

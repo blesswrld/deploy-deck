@@ -29,8 +29,7 @@ interface Project {
 
 interface ProjectListItemProps {
     project: Project;
-    isLastUpdated: boolean;
-    onAnimationComplete: () => void;
+    // isLastUpdated и onAnimationComplete больше не нужны
     setProjectToEdit: (project: Project | null) => void;
     setProjectToDelete: (project: Project | null) => void;
     setProjectToLink: (project: Project | null) => void;
@@ -39,8 +38,6 @@ interface ProjectListItemProps {
 
 export const ProjectListItem = ({
     project,
-    isLastUpdated,
-    onAnimationComplete,
     setProjectToEdit,
     setProjectToDelete,
     setProjectToLink,
@@ -51,28 +48,9 @@ export const ProjectListItem = ({
         visible: { y: 0, opacity: 1 },
     };
 
-    const highlightVariants = {
-        initial: {
-            boxShadow: "0 0 0 0px hsla(210, 100%, 50%, 0)",
-            borderColor: "hsla(217, 32.6%, 17.5%, 1)",
-        },
-        highlight: {
-            boxShadow: "0 0 0 2px hsla(210, 100%, 50%, 0.5)",
-            borderColor: "hsla(210, 100%, 50%, 0.5)",
-            transition: {
-                duration: 0.5,
-                ease: "easeOut",
-                repeat: 1,
-                repeatType: "reverse",
-            },
-        },
-    };
-
     return (
         <motion.li
-            variants={{ ...itemVariants, ...highlightVariants }}
-            animate={isLastUpdated ? "highlight" : "initial"}
-            onAnimationComplete={onAnimationComplete}
+            variants={itemVariants}
             whileHover={{ scale: 1.015 }}
             className="flex flex-col rounded-lg border bg-card/85 border-white/10"
         >

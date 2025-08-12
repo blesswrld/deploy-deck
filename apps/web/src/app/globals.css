@@ -94,6 +94,6 @@
     }
 
     a:focus-visible {
-        @apply rounded-md ring-2 ring-ring ring-offset-2 ring-offset-background;
+        @apply rounded-md ring-0 ring-offset-0 ring-offset-background outline-none border-none;
     }
 }
