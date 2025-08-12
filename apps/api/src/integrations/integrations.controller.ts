@@ -13,6 +13,7 @@ import {
   Delete,
   NotFoundException,
   ForbiddenException,
+  Headers,
 } from '@nestjs/common';
 import { IntegrationsService } from './integrations.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -21,12 +22,14 @@ import type { User } from '@prisma/client';
 import { ConnectVercelDto } from './dto/connect-vercel.dto';
 import type { Response } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { EventsGateway } from 'src/events/events.gateway'; // <-- Импортируем наш Gateway
 
 @Controller('integrations')
 export class IntegrationsController {
   constructor(
     private readonly integrationsService: IntegrationsService,
     private prisma: PrismaService,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   // --- VERCEL ЭНДПОИНТЫ ---
@@ -105,6 +108,38 @@ export class IntegrationsController {
   @UseGuards(JwtAuthGuard)
   disconnectVercel(@GetUser() user: User) {
     return this.integrationsService.disconnectVercel(user.id);
+  }
+
+  // ЭНДПОИНТ ДЛЯ ВЕБХУКОВ GITHUB
+  @Post('github/webhook')
+  @HttpCode(HttpStatus.OK)
+  async handleGithubWebhook(@Body() payload: any) {
+    // В продакшене здесь нужно проверять подпись вебхука
+
+    // Нас интересует событие, когда статус проверки (check run) меняется
+    if (payload.action === 'completed' && payload.check_run) {
+      const repoFullName = payload.repository.full_name; // e.g., "blesswrld/deploy-deck"
+
+      // Находим наш проект по gitUrl
+      const project = await this.integrationsService.findProjectByGitUrl(
+        `https://github.com/${repoFullName}`,
+      );
+
+      if (project) {
+        // Получаем свежие, агрегированные данные для этого проекта
+        const updatedProjectStatus =
+          await this.integrationsService.getProjectDashboardStatus(project);
+
+        // Отправляем обновленные данные пользователю через WebSocket
+        this.eventsGateway.sendToUser(
+          project.userId,
+          'project:updated',
+          updatedProjectStatus,
+        );
+      }
+    }
+
+    return;
   }
 
   @Delete('github')

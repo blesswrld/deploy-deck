@@ -194,4 +194,23 @@ export class AuthService {
       );
     }
   }
+
+  // метод для верификации JWT. Он будет использоваться нашим Gateway.
+  async verifyJwt(token: string): Promise<any> {
+    try {
+      // Используем стандартный JwtService для проверки
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('SECRET_KEY'),
+      });
+      // Можно добавить проверку, что пользователь все еще существует в базе, для большей надежности
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+      if (!user) return null;
+
+      return user;
+    } catch (error) {
+      return null; // Возвращаем null, если токен невалиден
+    }
+  }
 }

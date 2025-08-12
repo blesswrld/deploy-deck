@@ -598,4 +598,35 @@ export class IntegrationsService {
       return [];
     }
   }
+
+  // ВСПОМОГАТЕЛЬНЫЙ МЕТОД №1
+  async findProjectByGitUrl(gitUrl: string): Promise<Project | null> {
+    // Ищем проект, чей gitUrl либо точно совпадает, либо совпадает с добавлением .git
+    return this.prisma.project.findFirst({
+      where: {
+        OR: [{ gitUrl: gitUrl }, { gitUrl: `${gitUrl}.git` }],
+      },
+    });
+  }
+
+  // ВСПОМОГАТЕЛЬНЫЙ МЕТОД №2
+  // Этот метод объединяет логику получения статусов, которую мы писали для дашборда
+  async getProjectDashboardStatus(project: Project) {
+    const deploymentStatus = await this.getVercelDeploymentStatus(
+      project.userId,
+      project,
+    );
+    const commitSha = deploymentStatus?.commitSha;
+    const checksStatus = await this.getGithubChecks(
+      project.userId,
+      project,
+      commitSha,
+    );
+
+    return {
+      ...project,
+      deploymentStatus,
+      checksStatus,
+    };
+  }
 }

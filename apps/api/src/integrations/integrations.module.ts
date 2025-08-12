@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { IntegrationsService } from './integrations.service';
 import { IntegrationsController } from './integrations.controller';
-import { AuthModule } from 'src/auth/auth.module';
+import { EncryptionModule } from 'src/common/encryption/encryption.module';
+import { SupabaseModule } from 'src/supabase/supabase.module';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [EncryptionModule, SupabaseModule, EventsModule],
   controllers: [IntegrationsController],
   providers: [IntegrationsService],
   exports: [IntegrationsService],

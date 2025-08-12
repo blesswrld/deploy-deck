@@ -4,9 +4,11 @@
     "scripts": {
         "build": "turbo build",
         "dev": "turbo dev --filter=web --filter=api --parallel",
-        "lint": "turbo lint"
+        "lint": "turbo lint",
+        "tunnel": "pnpm exec cloudflared tunnel --url http://localhost:3002"
     },
     "devDependencies": {
+        "cloudflared": "^0.7.1",
         "turbo": "^2.0.5"
     },
     "packageManager": "pnpm@8.6.1"
