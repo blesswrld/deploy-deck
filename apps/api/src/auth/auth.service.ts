@@ -4,7 +4,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { SignupDto } from './dto/signup-auth.dto';
+import { LoginDto } from './dto/login-auth.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
@@ -16,24 +17,32 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async signup(createAuthDto: CreateAuthDto) {
-    const { email, password } = createAuthDto;
+  async signup(signupDto: SignupDto) {
+    const { email, password, name } = signupDto; // <-- Получаем `name`
 
     // Проверяем, не занят ли email
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUserByEmail = await this.prisma.user.findUnique({
       where: { email },
     });
-    if (existingUser) {
+    if (existingUserByEmail) {
       throw new ConflictException('Email already in use');
     }
 
-    // Хэшируем пароль
+    // <-- ДОБАВЛЯЕМ ПРОВЕРКУ НА УНИКАЛЬНОСТЬ ИМЕНИ -->
+    const existingUserByName = await this.prisma.user.findUnique({
+      where: { name },
+    });
+    if (existingUserByName) {
+      throw new ConflictException('Name is already taken');
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Создаем пользователя
     const user = await this.prisma.user.create({
       data: {
         email,
+        name, // <-- ДОБАВЛЯЕМ `name` В СОЗДАНИЕ
         password: hashedPassword,
       },
     });
@@ -44,7 +53,7 @@ export class AuthService {
   }
 
   // === МЕТОД LOGIN ===
-  async login(loginDto: CreateAuthDto) {
+  async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
     // 1. Находим пользователя по email
@@ -60,7 +69,7 @@ export class AuthService {
     }
 
     // 3. Генерируем JWT-токен
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, name: user.name };
     const accessToken = await this.jwtService.signAsync(payload);
 
     // 4. Возвращаем токен

@@ -14,9 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation"; // <-- Импортируем хук для редиректа
 import { toast } from "sonner";
+import { ButtonLoader } from "@/components/ButtonLoader";
 
 export default function SignupPage() {
     // === БЛОК 1: Состояние для полей ввода и ошибок ===
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null); // Для хранения текста ошибки
@@ -36,7 +38,7 @@ export default function SignupPage() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ name, email, password }),
             });
 
             const data = await response.json();
@@ -74,6 +76,18 @@ export default function SignupPage() {
                     </CardHeader>
                     <CardContent className="grid gap-4">
                         <div className="grid gap-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input
+                                id="name"
+                                type="text"
+                                placeholder="username"
+                                required
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                disabled={isLoading}
+                            />
+                        </div>
+                        <div className="grid gap-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
                                 id="email"
@@ -100,13 +114,16 @@ export default function SignupPage() {
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4">
                         <Button
-                            type="submit"
+                            type="button"
+                            onClick={handleSubmit}
                             className="w-full"
                             disabled={isLoading}
                         >
-                            {isLoading
-                                ? "Creating account..."
-                                : "Create account"}
+                            {isLoading ? (
+                                <ButtonLoader text="Creating account..." />
+                            ) : (
+                                "Create account"
+                            )}
                         </Button>
                         {/* Отображаем ошибку, если она есть */}
                         {error && (

@@ -15,6 +15,7 @@ import {
     Deployment,
 } from "@/components/DeploymentListItem";
 import { toast } from "sonner";
+import { AppLoader } from "@/components/AppLoader";
 
 // Определяем полный тип для проекта, включая деплои
 interface ProjectDetails {
@@ -120,11 +121,7 @@ export default function ProjectDetailsPage() {
     };
 
     if (isAuthLoading || !isAuthenticated) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                Authenticating...
-            </div>
-        );
+        return <AppLoader variant="matrix" text="Loading Project Details..." />;
     }
 
     return (

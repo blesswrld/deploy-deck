@@ -19,11 +19,12 @@ import { useState } from "react";
 import { useSWRConfig } from "swr"; // <-- Импортируем для обновления кэша
 import { EditProfileDialog } from "@/components/EditProfileDialog";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { AppLoader } from "@/components/AppLoader";
 
 interface UserProfile {
     id: string;
     email: string;
-    name?: string | null;
+    name: string;
     avatarUrl?: string | null;
 }
 
@@ -42,11 +43,7 @@ export default function ProfilePage() {
     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
     if (isAuthLoading || !isAuthenticated) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                Authenticating...
-            </div>
-        );
+        return <AppLoader variant="text" text="Loading Profile..." />;
     }
 
     return (
@@ -72,13 +69,12 @@ export default function ProfilePage() {
                                     alt={user.name ?? "User Avatar"}
                                 />
                                 <AvatarFallback>
-                                    {user.name?.charAt(0) ||
-                                        user.email.charAt(0)}
+                                    {user.name.charAt(0).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
                                 <CardTitle className="text-2xl break-words">
-                                    {user.name || user.email}
+                                    {user.name}
                                 </CardTitle>
                                 <CardDescription className="break-words">
                                     {user.email}

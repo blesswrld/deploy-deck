@@ -53,6 +53,7 @@ import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
 import GithubChecksStatus from "@/components/GithubChecksStatus";
 import { ImportVercelDialog } from "@/components/ImportVercelDialog";
 import { GithubLogo } from "@/components/ui/icons";
+import { AppLoader } from "@/components/AppLoader";
 
 interface Project {
     id: string;
@@ -123,11 +124,7 @@ export default function DashboardPage() {
 
     // Пока идет проверка аутентификации, показываем заглушку
     if (isAuthLoading || !isAuthenticated) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                Authenticating...
-            </div>
-        );
+        return <AppLoader variant="connection" text="Authenticating..." />;
     }
 
     // Основной интерфейс

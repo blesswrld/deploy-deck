@@ -1,8 +1,6 @@
-// Установим зависимости для валидации
-// pnpm add class-validator class-transformer --filter api
 import { IsEmail, IsString, MinLength } from 'class-validator';
 
-export class CreateAuthDto {
+export class LoginDto {
   @IsEmail()
   email: string;
 

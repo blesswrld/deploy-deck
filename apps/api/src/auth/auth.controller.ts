@@ -7,20 +7,21 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { SignupDto } from './dto/signup-auth.dto';
+import { LoginDto } from './dto/login-auth.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
-  signup(@Body(new ValidationPipe()) createAuthDto: CreateAuthDto) {
-    return this.authService.signup(createAuthDto);
+  signup(@Body(new ValidationPipe()) signupDto: SignupDto) {
+    return this.authService.signup(signupDto);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK) // Для логина принято возвращать статус 200 OK
-  login(@Body(new ValidationPipe()) loginDto: CreateAuthDto) {
+  login(@Body(new ValidationPipe()) loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 }

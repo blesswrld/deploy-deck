@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { ButtonLoader } from "@/components/ButtonLoader";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -100,7 +101,11 @@ export default function LoginPage() {
                             className="w-full"
                             disabled={isLoading}
                         >
-                            {isLoading ? "Signing in..." : "Sign In"}
+                            {isLoading ? (
+                                <ButtonLoader text="Signing in..." />
+                            ) : (
+                                "Sign In"
+                            )}
                         </Button>
                         {error && (
                             <p className="text-sm font-medium text-red-500">

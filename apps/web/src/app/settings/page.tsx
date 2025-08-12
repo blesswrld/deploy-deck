@@ -18,6 +18,7 @@ import { useApi } from "@/hooks/useApi";
 import { useSWRConfig } from "swr";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { AppLoader } from "@/components/AppLoader";
 
 // Определим тип для данных пользователя
 interface UserProfile {
@@ -86,11 +87,7 @@ export default function SettingsPage() {
     };
 
     if (isLoading || !isAuthenticated) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                Authenticating...
-            </div>
-        );
+        return <AppLoader variant="settings" text="Loading Settings..." />;
     }
 
     return (
