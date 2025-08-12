@@ -11,7 +11,7 @@ import axios from 'axios';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import type { Project } from '@prisma/client';
 
-interface VercelDeployment {
+export interface VercelDeployment {
   id: string;
   status: string;
   branch: string;
@@ -578,7 +578,7 @@ export class IntegrationsService {
       const mainBranch = repoResponse.data.default_branch;
 
       const commitsResponse = await axios.get(
-        `https://api.github.com/repos/${repoFullName}/commits?sha=${mainBranch}&per_page=20`,
+        `https://api.github.com/repos/${repoFullName}/commits?sha=${mainBranch}&per_page=100`,
         { headers: authHeaders },
       );
 

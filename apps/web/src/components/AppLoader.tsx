@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { User, KeyRound, Server, Cog } from "lucide-react";
 import { clsx } from "clsx"; // <-- Импортируем clsx
+import { useEffect, useState } from "react";
 
 // Определяем типы для вариантов
 type LoaderVariant =
@@ -109,11 +110,23 @@ const GridLoader = ({ text }: { text: string }) => {
 
 //  "Матрица логов" (для страницы деталей проекта)
 const MatrixLoader = ({ text }: { text: string }) => {
-    const lines = Array.from({ length: 5 }); // Генерируем 5 строк
+    const [lines, setLines] = useState<string[]>([]);
+
+    // Генерируем случайные строки только на клиенте, один раз при монтировании
+    useEffect(() => {
+        const generatedLines = Array.from({ length: 5 }).map(
+            () =>
+                `${Math.random().toString(36).substring(2, 15)} ${Math.random().toString(36).substring(2, 15)}`
+        );
+        setLines(generatedLines);
+    }, []); // Пустой массив зависимостей = выполнить один раз на клиенте
+
     return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-4 font-mono text-xs text-slate-500">
-            <div className="w-full max-w-md p-4 space-y-1">
-                {lines.map((_, i) => (
+            <div className="w-full max-w-md p-4 space-y-1 h-24">
+                {" "}
+                {/* Задаем высоту, чтобы избежать скачков */}
+                {lines.map((line, i) => (
                     <motion.p
                         key={i}
                         initial={{ opacity: 0 }}
@@ -124,9 +137,7 @@ const MatrixLoader = ({ text }: { text: string }) => {
                             delay: i * 0.4,
                         }}
                     >
-                        {/* Генерируем псевдо-случайный текст лога */}
-                        &gt; {Math.random().toString(36).substring(2, 15)}{" "}
-                        {Math.random().toString(36).substring(2, 15)}
+                        &gt; {line}
                     </motion.p>
                 ))}
             </div>

@@ -8,6 +8,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { IntegrationsService } from 'src/integrations/integrations.service';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { VercelDeployment } from 'src/integrations/integrations.service';
 
 @Injectable()
 export class ProjectsService {
@@ -91,42 +92,34 @@ export class ProjectsService {
   }
 
   async findOne(id: string, userId: string) {
-    const project = await this.prisma.project.findUnique({ where: { id } });
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+    });
 
-    if (!project)
+    if (!project) {
       throw new NotFoundException(`Project with ID "${id}" not found`);
-    if (project.userId !== userId)
+    }
+
+    if (project.userId !== userId) {
       throw new ForbiddenException(
         `You do not have permission to access this project`,
       );
+    }
 
-    // Получаем историю коммитов и деплоев параллельно
-    const [githubCommits, vercelDeployments] = await Promise.all([
-      this.integrations.getGithubCommits(userId, project),
-      this.integrations.getVercelDeployments(userId, id), // id здесь - это наш projectId
-    ]);
+    let deployments: VercelDeployment[] = [];
+    if (project.vercelProjectId) {
+      // Просто запрашиваем деплои
+      try {
+        deployments = await this.integrations.getVercelDeployments(userId, id);
+      } catch (error) {
+        console.error(
+          `Failed to fetch deployments for project ${id}:`,
+          error.message,
+        );
+      }
+    }
 
-    // Создаем Map для быстрого поиска деплоев по хэшу коммита
-    const deploymentsMap = new Map(
-      vercelDeployments.map((dep) => [dep.commit, dep]),
-    );
-
-    // Объединяем данные: основа - коммиты из GitHub
-    const combinedHistory = githubCommits.map((commit) => {
-      const matchingDeployment = deploymentsMap.get(commit.sha);
-      return {
-        id: matchingDeployment?.id || commit.sha,
-        status: matchingDeployment?.status || 'NOT_DEPLOYED',
-        branch: commit.branch,
-        commit: commit.sha,
-        message: commit.message,
-        creator: commit.author,
-        createdAt: commit.date,
-        url: matchingDeployment?.url || commit.url,
-      };
-    });
-
-    return { ...project, deployments: combinedHistory };
+    return { ...project, deployments };
   }
 
   async update(id: string, updateProjectDto: UpdateProjectDto, userId: string) {

@@ -22,12 +22,15 @@ import {
 } from "@/components/ui/dialog";
 import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext"; // <-- Импортируем, чтобы получить email
+import { useSWRConfig } from "swr"; // <-- Импортируем, чтобы получить данные пользователя
 
 // Схема с проверкой, что пароли не совпадают
 const formSchema = z
     .object({
         currentPassword: z
             .string()
+            .min(1, "Current password is required.") // Просто проверяем, что не пустое
             .min(8, "Password must be at least 8 characters."),
         newPassword: z
             .string()
@@ -48,6 +51,10 @@ export function ChangePasswordDialog({
     onClose,
 }: ChangePasswordDialogProps) {
     const { api } = useApi();
+    // Получаем кэш SWR, чтобы достать из него email пользователя
+    const { cache } = useSWRConfig();
+    const user = cache.get("/users/me")?.data;
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { currentPassword: "", newPassword: "" },
@@ -63,11 +70,43 @@ export function ChangePasswordDialog({
             loading: "Updating password...",
             success: (data) => {
                 onClose();
+                form.reset(); // Очищаем форму после успеха
                 return data.message || "Password updated successfully!";
             },
-            error: (err) => err.message,
+            error: (err) => {
+                // Если ошибка связана с текущим паролем, покажем ее в поле
+                if (err.message.toLowerCase().includes("current password")) {
+                    form.setError("currentPassword", {
+                        type: "server",
+                        message: err.message,
+                    });
+                }
+                return err.message;
+            },
         });
     }
+
+    // ФУНКЦИЯ для отправки ссылки
+    const handleSendResetLink = () => {
+        if (!user?.email) {
+            toast.error("Could not find user email to send reset link.");
+            return;
+        }
+
+        const promise = api("/auth/forgot-password", {
+            method: "POST",
+            body: JSON.stringify({ email: user.email }),
+        });
+
+        toast.promise(promise, {
+            loading: "Sending reset link...",
+            success: "A password reset link has been sent to your email.",
+            error: "Failed to send reset link. Please try again.",
+        });
+
+        // Закрываем текущее модальное окно после запроса
+        onClose();
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -81,7 +120,7 @@ export function ChangePasswordDialog({
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(onSubmit)}
-                        className="space-y-8"
+                        className="space-y-4"
                     >
                         <FormField
                             control={form.control}
@@ -109,11 +148,27 @@ export function ChangePasswordDialog({
                                 </FormItem>
                             )}
                         />
-                        <div className="flex justify-end gap-2">
+
+                        {/* ССЫЛКА "Forgot password?" */}
+                        <div className="text-right -mt-2">
+                            <Button
+                                type="button"
+                                variant="link"
+                                className="text-xs h-auto p-0"
+                                onClick={handleSendResetLink}
+                            >
+                                Forgot password?
+                            </Button>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4">
                             <Button
                                 type="button"
                                 variant="ghost"
-                                onClick={onClose}
+                                onClick={() => {
+                                    form.reset();
+                                    onClose();
+                                }}
                             >
                                 Cancel
                             </Button>
