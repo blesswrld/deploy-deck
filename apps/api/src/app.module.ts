@@ -10,6 +10,7 @@ import { EncryptionService } from './common/encryption/encryption.service';
 import { EncryptionModule } from './common/encryption/encryption.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { EmailModule } from './email/email.module';
 @Global()
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     IntegrationsModule,
     EncryptionModule,
     SupabaseModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react"; // <-- Импортируем хук для состояния
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { SignupSchema } from "@/lib/validators"; // <-- Импортируем нашу схему
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -10,130 +14,159 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"; // <-- Импортируем компоненты формы
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation"; // <-- Импортируем хук для редиректа
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ButtonLoader } from "@/components/ButtonLoader";
 
 export default function SignupPage() {
-    // === БЛОК 1: Состояние для полей ввода и ошибок ===
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState<string | null>(null); // Для хранения текста ошибки
-    const [isLoading, setIsLoading] = useState(false); // Чтобы блокировать кнопку во время запроса
-    const router = useRouter(); // Получаем доступ к роутеру Next.js
+    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
 
-    // === БЛОК 2: Функция-обработчик отправки формы ===
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); // Предотвращаем стандартную перезагрузку страницы
-        setIsLoading(true); // Блокируем кнопку
-        setError(null); // Сбрасываем старые ошибки
+    const form = useForm<z.infer<typeof SignupSchema>>({
+        resolver: zodResolver(SignupSchema),
+        defaultValues: {
+            name: "",
+            email: "",
+            password: "",
+        },
+    });
 
+    const onSubmit = async (values: z.infer<typeof SignupSchema>) => {
+        setIsLoading(true);
         try {
-            // Отправляем запрос на наш бэкенд
             const response = await fetch("http://localhost:3002/auth/signup", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ name, email, password }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(values),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                // Если сервер ответил ошибкой (например, 409 Conflict), показываем ее
-                throw new Error(data.message || "Something went wrong");
+                // Если ошибка от сервера, показываем ее в соответствующем поле
+                if (data.message.toLowerCase().includes("email")) {
+                    form.setError("email", {
+                        type: "server",
+                        message: data.message,
+                    });
+                } else if (data.message.toLowerCase().includes("name")) {
+                    form.setError("name", {
+                        type: "server",
+                        message: data.message,
+                    });
+                }
+                throw new Error(data.message);
             }
 
-            // Если все успешно, можно перенаправить пользователя на страницу входа
             toast.success("Account created successfully!", {
                 description: "You can now log in.",
             });
-            router.push("/login"); // <-- Редирект на страницу входа
+            router.push("/login");
         } catch (err: any) {
-            // Ловим ошибку и отображаем ее
-            setError(err.message);
-            toast.error(err.message);
+            // Ошибки валидации уже отображаются в полях,
+            // поэтому здесь можно просто показать общий toast, если нужно
+            if (
+                !err.message.toLowerCase().includes("email") &&
+                !err.message.toLowerCase().includes("name")
+            ) {
+                toast.error(err.message || "An unknown error occurred");
+            }
         } finally {
-            setIsLoading(false); // Разблокируем кнопку в любом случае
+            setIsLoading(false);
         }
     };
 
-    // === БЛОК 3: Привязываем состояние и обработчик к JSX ===
     return (
-        <div className="flex items-center justify-center min-h-screen p-4 md:p-8 bg-gray-100 dark:bg-gray-900">
-            {/* Оборачиваем карточку в тег <form> и вешаем на него наш обработчик */}
-            <form onSubmit={handleSubmit}>
-                <Card className="w-full max-w-sm">
-                    <CardHeader>
-                        <CardTitle className="text-2xl">Sign Up</CardTitle>
-                        <CardDescription>
-                            Enter your email below to create your account.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="name">Name</Label>
-                            <Input
-                                id="name"
-                                type="text"
-                                placeholder="username"
-                                required
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
+        <div className="flex items-center justify-center min-h-screen p-4 md:p-8">
+            <Card className="w-full max-w-sm bg-card/85 backdrop-blur-sm border-white/10">
+                <CardHeader>
+                    <CardTitle className="text-2xl">Sign Up</CardTitle>
+                    <CardDescription>
+                        Enter your details below to create your account.
+                    </CardDescription>
+                </CardHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                        <CardContent className="grid gap-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Name</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="username"
+                                                {...field}
+                                                disabled={isLoading}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="email"
+                                                placeholder="you@example.com"
+                                                {...field}
+                                                disabled={isLoading}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Password</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="password"
+                                                placeholder="********"
+                                                {...field}
+                                                disabled={isLoading}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                        <CardFooter>
+                            <Button
+                                type="submit"
+                                className="w-full"
                                 disabled={isLoading}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="you@example.com"
-                                required
-                                value={email} // Привязываем к состоянию
-                                onChange={(e) => setEmail(e.target.value)} // Обновляем состояние при вводе
-                                disabled={isLoading} // Блокируем поле во время запроса
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                placeholder="*****"
-                                required
-                                value={password} // Привязываем к состоянию
-                                onChange={(e) => setPassword(e.target.value)} // Обновляем состояние при вводе
-                                disabled={isLoading} // Блокируем поле во время запроса
-                            />
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col gap-4">
-                        <Button
-                            type="button"
-                            onClick={handleSubmit}
-                            className="w-full"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <ButtonLoader text="Creating account..." />
-                            ) : (
-                                "Create account"
-                            )}
-                        </Button>
-                        {/* Отображаем ошибку, если она есть */}
-                        {error && (
-                            <p className="text-sm font-medium text-red-500">
-                                {error}
-                            </p>
-                        )}
-                    </CardFooter>
-                </Card>
-            </form>
+                            >
+                                {isLoading ? (
+                                    <ButtonLoader text="Creating account..." />
+                                ) : (
+                                    "Create account"
+                                )}
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </Form>
+            </Card>
         </div>
     );
 }

@@ -12,7 +12,7 @@ export class SignupDto {
   @MinLength(3, { message: 'Name must be at least 3 characters long' })
   @MaxLength(20, { message: 'Name must be at most 20 characters long' })
   @Matches(/^[a-zA-Z0-9_]+$/, {
-    message: 'Name can only contain letters, numbers, and underscores.',
+    message: 'Name can only contain letters, numbers, and underscores',
   })
   name: string;
 
