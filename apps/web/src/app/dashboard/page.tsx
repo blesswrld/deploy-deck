@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion"; // <-- Импорт для анимации
+import { useSocket } from "@/contexts/SocketContext";
 import { useApi } from "@/hooks/useApi";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
-import useSWR from "swr"; // <-- ВАЖНЫЙ ИМПОРТ
+import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -17,10 +19,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-    GitBranch,
-    GitCommitHorizontal,
     LogOut,
-    MoreHorizontal,
     MoreVertical,
     PlusCircle,
     Settings,
@@ -30,10 +29,8 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
-    DropdownMenuPortal, // <-- ИМПОРТИРУЕМ ПОРТАЛ
+    DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
@@ -48,12 +45,10 @@ import {
 import { AddProjectForm } from "@/components/AddProjectForm";
 import Link from "next/link";
 import { LinkVercelDialog } from "@/components/LinkVercelDialog";
-import DashboardDeploymentStatus from "@/components/DashboardDeploymentStatus";
 import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
-import GithubChecksStatus from "@/components/GithubChecksStatus";
 import { ImportVercelDialog } from "@/components/ImportVercelDialog";
-import { GithubLogo } from "@/components/ui/icons";
 import { AppLoader } from "@/components/AppLoader";
+import { ProjectListItem } from "@/components/ProjectListItem";
 
 interface Project {
     id: string;
@@ -83,6 +78,8 @@ export default function DashboardPage() {
         },
     });
 
+    const socket = useSocket();
+
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(
         null
@@ -90,6 +87,42 @@ export default function DashboardPage() {
     const [projectToLink, setProjectToLink] = useState<Project | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+
+    // состояние для отслеживания обновлений
+    const [lastUpdatedProjectId, setLastUpdatedProjectId] = useState<
+        string | null
+    >(null);
+
+    // useEffect ДЛЯ ПРОСЛУШИВАНИЯ СОБЫТИЙ
+    useEffect(() => {
+        if (socket) {
+            // Подписываемся на событие 'project:updated'
+            socket.on("project:updated", (updatedProject: Project) => {
+                console.log("Received project:updated event:", updatedProject);
+
+                // Устанавливаем ID обновленного проекта
+                setLastUpdatedProjectId(updatedProject.id);
+
+                // Используем mutate для обновления кэша SWR
+                mutate((currentProjects) => {
+                    if (!currentProjects) return [];
+                    // Находим и заменяем обновленный проект в списке
+                    return currentProjects.map((p) =>
+                        p.id === updatedProject.id ? updatedProject : p
+                    );
+                }, false); // `false` предотвращает немедленный повторный запрос
+
+                toast.info(
+                    `Status updated for project: ${updatedProject.name}`
+                );
+            });
+
+            // Отписываемся от события при размонтировании
+            return () => {
+                socket.off("project:updated");
+            };
+        }
+    }, [socket, mutate]);
 
     const handleLogout = () => {
         setToken(null);
@@ -289,149 +322,38 @@ export default function DashboardPage() {
                             !error &&
                             projects &&
                             projects.length > 0 && (
-                                <ul className="space-y-4">
+                                <motion.ul
+                                    className="space-y-4"
+                                    variants={{
+                                        visible: {
+                                            transition: {
+                                                staggerChildren: 0.05,
+                                            },
+                                        },
+                                    }}
+                                    initial="hidden"
+                                    animate="visible"
+                                >
                                     {projects.map((project) => (
-                                        <li
+                                        <ProjectListItem
                                             key={project.id}
-                                            className="flex flex-col rounded-lg border bg-card/85 border-white/10 transition-colors hover:bg-white/5"
-                                        >
-                                            {/* Верхняя часть: Название и Меню */}
-                                            <div className="flex items-center justify-between p-4">
-                                                <Link
-                                                    href={`/project/${project.id}`}
-                                                    className="flex-grow min-w-0" // Позволяет тексту сокращаться
-                                                >
-                                                    <div>
-                                                        <p className="font-semibold text-lg hover:underline truncate">
-                                                            {project.name}
-                                                        </p>
-                                                        <p className="text-sm text-muted-foreground truncate">
-                                                            {project.gitUrl}
-                                                        </p>
-                                                    </div>
-                                                </Link>
-                                                <div className="pl-4">
-                                                    {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger
-                                                            asChild
-                                                        >
-                                                            <Button
-                                                                variant="ghost"
-                                                                className="h-8 w-8 p-0"
-                                                            >
-                                                                <span className="sr-only">
-                                                                    Open menu
-                                                                </span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-
-                                                        <DropdownMenuPortal>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuLabel>
-                                                                    Actions
-                                                                </DropdownMenuLabel>
-                                                                <DropdownMenuItem
-                                                                    onClick={() => {
-                                                                        setProjectToEdit(
-                                                                            project
-                                                                        );
-                                                                        setIsDialogOpen(
-                                                                            true
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    Edit
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem
-                                                                    className="text-red-600"
-                                                                    onClick={() =>
-                                                                        setProjectToDelete(
-                                                                            project
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenuPortal>
-                                                    </DropdownMenu>
-                                                </div>
-                                            </div>
-
-                                            {/* Нижняя часть: Статусы */}
-                                            <div className="flex flex-wrap items-center justify-between border-t border-white/10 px-4 py-2 gap-y-3 text-xs text-muted-foreground">
-                                                {/* Левая группа: GitHub + Vercel Status */}
-                                                <div className="flex items-center gap-4">
-                                                    {/* Группа для GitHub */}
-                                                    <div className="flex items-center gap-2">
-                                                        <GithubLogo className="h-4 w-4" />
-                                                        <GithubChecksStatus
-                                                            checksStatus={
-                                                                project.checksStatus
-                                                            }
-                                                        />
-                                                    </div>
-
-                                                    {/* Группа для Vercel */}
-                                                    {project.vercelProjectId ? (
-                                                        <DashboardDeploymentStatus
-                                                            deploymentStatus={
-                                                                project.deploymentStatus
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setProjectToLink(
-                                                                    project
-                                                                );
-                                                            }}
-                                                        >
-                                                            Link to Vercel
-                                                        </Button>
-                                                    )}
-                                                </div>
-
-                                                {/* Правая группа: Ветка и Коммит */}
-                                                {project.deploymentStatus
-                                                    ?.branch && (
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="flex items-center gap-1">
-                                                            <GitBranch className="h-3 w-3" />
-                                                            <span>
-                                                                {
-                                                                    project
-                                                                        .deploymentStatus
-                                                                        .branch
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                        {project
-                                                            .deploymentStatus
-                                                            ?.commit && (
-                                                            <div className="flex items-center gap-1">
-                                                                <GitCommitHorizontal className="h-3 w-3" />
-                                                                <span className="font-mono">
-                                                                    {
-                                                                        project
-                                                                            .deploymentStatus
-                                                                            .commit
-                                                                    }
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </li>
+                                            project={project}
+                                            isLastUpdated={
+                                                lastUpdatedProjectId ===
+                                                project.id
+                                            }
+                                            onAnimationComplete={() =>
+                                                setLastUpdatedProjectId(null)
+                                            }
+                                            setProjectToEdit={setProjectToEdit}
+                                            setProjectToDelete={
+                                                setProjectToDelete
+                                            }
+                                            setProjectToLink={setProjectToLink}
+                                            setIsDialogOpen={setIsDialogOpen}
+                                        />
                                     ))}
-                                </ul>
+                                </motion.ul>
                             )}
                     </CardContent>
                 </Card>

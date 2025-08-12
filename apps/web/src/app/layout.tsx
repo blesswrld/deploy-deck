@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SocketProvider } from "@/contexts/SocketContext"; // <-- ИМПОРТ
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,9 +25,11 @@ export default function RootLayout({
             {/* dark для темной темы по умолчанию */}
             <body className={inter.className}>
                 <AuthProvider>
-                    <TooltipProvider>
-                        <AnimatedBackground>{children}</AnimatedBackground>
-                    </TooltipProvider>
+                    <SocketProvider>
+                        <TooltipProvider>
+                            <AnimatedBackground>{children}</AnimatedBackground>
+                        </TooltipProvider>
+                    </SocketProvider>
                     <Toaster />
                 </AuthProvider>
             </body>
