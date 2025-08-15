@@ -12,6 +12,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { EmailModule } from './email/email.module';
 import { EventsModule } from './events/events.module';
+import { TagsModule } from './tags/tags.module';
 
 @Global()
 @Module({
@@ -26,6 +27,7 @@ import { EventsModule } from './events/events.module';
     SupabaseModule,
     EmailModule,
     EventsModule,
+    TagsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

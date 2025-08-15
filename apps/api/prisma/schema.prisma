@@ -27,6 +27,8 @@ model User {
 
   // Добавляем связь: у этого пользователя есть список проектов
   projects  Project[]
+
+  tags      Tag[]     // У пользователя может быть много тегов
 }
 
 // --- МОДЕЛЬ ПРОЕКТА ---
@@ -43,4 +45,20 @@ model Project {
   // Добавляем связь: этот проект принадлежит одному пользователю
   userId      String   // "Внешний ключ" для связи с User
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   // СВЯЗЬ С ТЕГАМИ
+  tags Tag[]
+}
+
+// МОДЕЛЬ ДЛЯ ТЕГОВ
+model Tag {
+  id        String    @id @default(cuid())
+  name      String    @unique // e.g., "React", "Node.js", "Python"
+  color     String    // e.g., "#61DAFB", "#68A063", "#3776AB"
+  
+  projects Project[]
+  
+  // Привязка к пользователю, чтобы у каждого были свои теги
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

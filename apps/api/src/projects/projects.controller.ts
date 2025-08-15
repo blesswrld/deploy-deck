@@ -57,4 +57,22 @@ export class ProjectsController {
   remove(@Param('id') id: string, @GetUser() user: User) {
     return this.projectsService.remove(id, user.id);
   }
+
+  @Post(':id/tags')
+  addTag(
+    @Param('id') projectId: string,
+    @Body('tagId') tagId: string,
+    @GetUser() user: User,
+  ) {
+    return this.projectsService.addTagToProject(projectId, tagId, user.id);
+  }
+
+  @Delete(':id/tags/:tagId')
+  removeTag(
+    @Param('id') projectId: string,
+    @Param('tagId') tagId: string,
+    @GetUser() user: User,
+  ) {
+    return this.projectsService.removeTagFromProject(projectId, tagId, user.id);
+  }
 }

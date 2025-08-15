@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { GitBranch, GitCommitHorizontal, MoreHorizontal } from "lucide-react";
@@ -16,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { GithubLogo } from "@/components/ui/icons";
 import GithubChecksStatus from "@/components/GithubChecksStatus";
 import DashboardDeploymentStatus from "@/components/DashboardDeploymentStatus";
+import { TagBadge } from "./TagBadge";
+import { TagManager } from "./TagManager";
 
 // Определения типов, необходимые для этого компонента
 interface Project {
@@ -25,6 +28,7 @@ interface Project {
     vercelProjectId?: string | null;
     deploymentStatus: any;
     checksStatus: any;
+    tags: { id: string; name: string; color: string }[];
 }
 
 interface ProjectListItemProps {
@@ -34,6 +38,8 @@ interface ProjectListItemProps {
     setProjectToDelete: (project: Project | null) => void;
     setProjectToLink: (project: Project | null) => void;
     setIsDialogOpen: (isOpen: boolean) => void;
+    onMouseEnter: () => void; // <-- ПРОП для биндов
+    onMouseLeave: () => void; // <-- ПРОП для биндов
 }
 
 export const ProjectListItem = ({
@@ -42,16 +48,22 @@ export const ProjectListItem = ({
     setProjectToDelete,
     setProjectToLink,
     setIsDialogOpen,
+    onMouseEnter,
+    onMouseLeave,
 }: ProjectListItemProps) => {
     const itemVariants = {
         hidden: { y: 20, opacity: 0 },
         visible: { y: 0, opacity: 1 },
     };
 
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
     return (
         <motion.li
             variants={itemVariants}
             whileHover={{ scale: 1.015 }}
+            onMouseEnter={onMouseEnter} // <-- Вешаем обработчик
+            onMouseLeave={onMouseLeave} // <-- Вешаем обработчик
             className="flex flex-col rounded-lg border bg-card/85 border-white/10"
         >
             {/* Верхняя часть: Название и Меню */}
@@ -67,11 +79,24 @@ export const ProjectListItem = ({
                         <p className="text-sm text-muted-foreground truncate">
                             {project.gitUrl}
                         </p>
+                        {/* === ОТОБРАЖЕНИЕ ТЕГОВ === */}
+                        {project.tags.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1 mt-2">
+                                {project.tags.map((tag) => (
+                                    <TagBadge key={tag.id} tag={tag} />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </Link>
                 <div className="pl-4">
-                    {/* ВЫПАДАЮЩЕЕ МЕНЮ */}
-                    <DropdownMenu>
+                    {/* ВЫПАДАЮЩЕЕ МЕНЮ С РУЧНЫМ УПРАВЛЕНИЕМ */}
+                    <DropdownMenu
+                        open={isMenuOpen}
+                        onOpenChange={setIsMenuOpen}
+                    >
+                        <TagManager project={project} />
+
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                                 <span className="sr-only">Open menu</span>
@@ -79,7 +104,26 @@ export const ProjectListItem = ({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuPortal>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent
+                                align="end"
+                                // Предотвращаем автоматическое закрытие при потере фокуса
+                                onFocusOutside={(e) => e.preventDefault()}
+                                // Закрываем вручную, если курсор ушел и от меню, и от поповера
+                                onPointerLeave={() => {
+                                    // Небольшая задержка, чтобы успеть переместить курсор
+                                    setTimeout(() => {
+                                        const popover = document.querySelector(
+                                            "[data-radix-popper-content-wrapper]"
+                                        );
+                                        if (
+                                            !popover ||
+                                            !popover.matches(":hover")
+                                        ) {
+                                            setIsMenuOpen(false);
+                                        }
+                                    }, 100);
+                                }}
+                            >
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem
                                     onClick={() => {
@@ -89,6 +133,7 @@ export const ProjectListItem = ({
                                 >
                                     Edit
                                 </DropdownMenuItem>
+
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     className="text-red-600"

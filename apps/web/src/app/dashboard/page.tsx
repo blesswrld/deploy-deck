@@ -52,6 +52,7 @@ import { ImportVercelDialog } from "@/components/ImportVercelDialog";
 import { AppLoader } from "@/components/AppLoader";
 import { ProjectListItem } from "@/components/ProjectListItem";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { useProjectHotkeys } from "@/hooks/useProjectHotkeys";
 
 interface Project {
     id: string;
@@ -108,6 +109,18 @@ export default function DashboardPage() {
     const [lastUpdatedProjectId, setLastUpdatedProjectId] = useState<
         string | null
     >(null);
+
+    const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+
+    // Находим активный проект в списке
+    const activeProject = projects?.find((p) => p.id === activeProjectId);
+
+    // Используем хук с действием onDelete
+    useProjectHotkeys(activeProjectId, {
+        onDelete: () => {
+            if (activeProject) setProjectToDelete(activeProject);
+        },
+    });
 
     const mutateRef = useRef(mutate);
     useEffect(() => {
@@ -333,6 +346,10 @@ export default function DashboardPage() {
                 <Card className="bg-card/80 border-white/10">
                     <CardHeader>
                         <CardTitle>My Projects</CardTitle>
+                        <p className="text-gray-500 font-bold text-xs">
+                            Note: Press del to remove the selected project from
+                            the list
+                        </p>
                     </CardHeader>
                     <CardContent>
                         {isLoadingData && !projects && <ProjectListSkeleton />}
@@ -375,6 +392,12 @@ export default function DashboardPage() {
                                             }
                                             setProjectToLink={setProjectToLink}
                                             setIsDialogOpen={setIsDialogOpen}
+                                            onMouseEnter={() =>
+                                                setActiveProjectId(project.id)
+                                            }
+                                            onMouseLeave={() =>
+                                                setActiveProjectId(null)
+                                            }
                                         />
                                     ))}
                                 </ul>

@@ -56,6 +56,7 @@ export class ProjectsService {
     // 1. ПОЛУЧАЕМ ПРОЕКТЫ ТОЛЬКО ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
     const userProjects = await this.prisma.project.findMany({
       where: { userId: userId },
+      include: { tags: true }, // <-- ВКЛЮЧАЕМ ТЕГИ
       orderBy: { createdAt: 'desc' },
     });
 
@@ -94,6 +95,7 @@ export class ProjectsService {
   async findOne(id: string, userId: string) {
     const project = await this.prisma.project.findUnique({
       where: { id },
+      include: { tags: true }, // <-- ВКЛЮЧАЕМ ТЕГИ
     });
 
     if (!project) {
@@ -155,5 +157,25 @@ export class ProjectsService {
 
     // Если проверка прошла, удаляем проект
     return this.prisma.project.delete({ where: { id } });
+  }
+
+  // методы для тегов
+  async addTagToProject(projectId: string, tagId: string, userId: string) {
+    // Проверка прав доступа
+    await this.findOne(projectId, userId);
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: { tags: { connect: { id: tagId } } },
+      include: { tags: true },
+    });
+  }
+
+  async removeTagFromProject(projectId: string, tagId: string, userId: string) {
+    await this.findOne(projectId, userId);
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: { tags: { disconnect: { id: tagId } } },
+      include: { tags: true },
+    });
   }
 }
