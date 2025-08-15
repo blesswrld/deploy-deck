@@ -12,13 +12,14 @@ import {
 import { SettingsForm } from "@/components/SettingsForm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Github, Triangle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import useSWR from "swr";
 import { useApi } from "@/hooks/useApi";
 import { useSWRConfig } from "swr";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import { AppLoader } from "@/components/AppLoader";
+import { GithubLogo, VercelLogo } from "@/components/ui/icons";
 
 // Определим тип для данных пользователя
 interface UserProfile {
@@ -114,7 +115,7 @@ export default function SettingsPage() {
                         {/* БЛОК ДЛЯ VERCEL */}
                         <div>
                             <h3 className="flex items-center text-lg font-semibold mb-4">
-                                <Triangle className="mr-2 h-5 w-5 fill-current" />
+                                <VercelLogo className="mr-2 h-5 w-5 fill-current" />
                                 Vercel
                             </h3>
                             <SettingsForm />
@@ -123,7 +124,7 @@ export default function SettingsPage() {
                         {/* БЛОК ДЛЯ GITHUB */}
                         <div>
                             <h3 className="flex items-center text-lg font-semibold mb-4">
-                                <Github className="mr-2 h-4 w-4 fill-current" />
+                                <GithubLogo className="mr-2 h-4 w-4 fill-current" />
                                 GitHub
                             </h3>
                             {isUserLoading ? (
@@ -146,7 +147,7 @@ export default function SettingsPage() {
                                 </div>
                             ) : (
                                 <Button onClick={handleConnectGithub}>
-                                    <Github className="mr-2 h-4 w-4" />
+                                    <GithubLogo className="mr-2 h-4 w-4" />
                                     Connect GitHub Account
                                 </Button>
                             )}
