@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req, Patch, Body } from '@nestjs/common'; // Добавляем Patch и Body
+import { Controller, Get, UseGuards, Req, Patch, Body } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { UpdatePasswordDto } from './dto/update-password.dto';
@@ -13,7 +13,8 @@ export class UsersController {
 
   @Get('me')
   getProfile(@GetUser() user: User) {
-    return user;
+    // Теперь getProfile будет использовать findOne, чтобы добавить hasVercelToken и hasGithubToken
+    return this.usersService.findOne(user.id);
   }
 
   @Patch('me')

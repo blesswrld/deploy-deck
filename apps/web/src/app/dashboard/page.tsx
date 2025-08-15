@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion"; // <-- Импорт для анимации
 import { useSocket } from "@/contexts/SocketContext";
 import { useApi } from "@/hooks/useApi";
@@ -51,6 +51,7 @@ import { ProjectListSkeleton } from "@/components/ProjectListSkeleton";
 import { ImportVercelDialog } from "@/components/ImportVercelDialog";
 import { AppLoader } from "@/components/AppLoader";
 import { ProjectListItem } from "@/components/ProjectListItem";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 interface Project {
     id: string;
@@ -59,6 +60,12 @@ interface Project {
     vercelProjectId?: string | null;
     deploymentStatus: any; // Используем any для простоты
     checksStatus: any;
+}
+
+// Добавляем тип для пользователя
+interface UserProfile {
+    hasVercelToken: boolean;
+    hasGithubToken: boolean;
 }
 
 export default function DashboardPage() {
@@ -70,15 +77,22 @@ export default function DashboardPage() {
     const fetcher = (url: string) => api(url);
     const {
         data: projects,
-        error,
-        isLoading: isLoadingData,
+        projectsError,
+        isLoadingProjects,
         mutate,
     } = useSWR<Project[]>(isAuthenticated ? "/projects" : null, fetcher, {
-        refreshInterval: 15000,
-        onError: (err) => {
-            toast.error(`Failed to fetch projects: ${err.message}`);
-        },
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        refreshWhenOffline: false,
+        refreshWhenHidden: false,
+        refreshInterval: 0,
     });
+
+    // === ЗАПРАШИВАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ===
+    const { data: user, isLoading: isLoadingUser } = useSWR<UserProfile>(
+        isAuthenticated ? "/users/me" : null,
+        fetcher
+    );
 
     const socket = useSocket();
 
@@ -95,36 +109,39 @@ export default function DashboardPage() {
         string | null
     >(null);
 
+    const mutateRef = useRef(mutate);
+    useEffect(() => {
+        mutateRef.current = mutate;
+    }, [mutate]);
+
     // useEffect ДЛЯ ПРОСЛУШИВАНИЯ СОБЫТИЙ
     useEffect(() => {
         if (socket) {
-            // Подписываемся на событие 'project:updated'
-            socket.on("project:updated", (updatedProject: Project) => {
+            const handleProjectUpdate = (updatedProject: Project) => {
                 console.log("Received project:updated event:", updatedProject);
-
-                // Устанавливаем ID обновленного проекта
                 setLastUpdatedProjectId(updatedProject.id);
 
-                // Используем mutate для обновления кэша SWR
-                mutate((currentProjects) => {
-                    if (!currentProjects) return [];
-                    // Находим и заменяем обновленный проект в списке
+                // Используем самую свежую версию mutate из ref
+                mutateRef.current((currentProjects) => {
+                    if (!currentProjects) return [updatedProject];
                     return currentProjects.map((p) =>
                         p.id === updatedProject.id ? updatedProject : p
                     );
-                }, false); // `false` предотвращает немедленный повторный запрос
+                }, false);
 
                 toast.info(
                     `Status updated for project: ${updatedProject.name}`
                 );
-            });
+            };
+
+            socket.on("project:updated", handleProjectUpdate);
 
             // Отписываемся от события при размонтировании
             return () => {
-                socket.off("project:updated");
+                socket.off("project:updated", handleProjectUpdate);
             };
         }
-    }, [socket, mutate]);
+    }, [socket]);
 
     const handleLogout = () => {
         setToken(null);
@@ -161,6 +178,8 @@ export default function DashboardPage() {
     if (isAuthLoading || !isAuthenticated) {
         return <AppLoader variant="connection" text="Authenticating..." />;
     }
+
+    const isLoadingData = isLoadingProjects || isLoadingUser; // Общая загрузка
 
     // Основной интерфейс
     return (
@@ -316,46 +335,40 @@ export default function DashboardPage() {
                         <CardTitle>My Projects</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {isLoadingData && <ProjectListSkeleton />}
+                        {isLoadingData && !projects && <ProjectListSkeleton />}
 
-                        {error && (
+                        {projectsError && !projects && (
                             <p className="text-red-500 text-center py-8">
                                 Failed to load projects. Please try again later.
                             </p>
                         )}
 
                         {!isLoadingData &&
-                            !error &&
                             projects &&
-                            projects.length === 0 && (
-                                <div className="text-center py-12">
-                                    <h3 className="font-semibold text-lg">
-                                        No projects found
-                                    </h3>
-                                    <p className="text-muted-foreground mt-1 mb-4">
-                                        Get started by importing your projects
-                                        from Vercel.
-                                    </p>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
+                            user &&
+                            (projects.length === 0 ? (
+                                <div className="py-8">
+                                    <OnboardingChecklist
+                                        user={user}
+                                        hasProjects={projects.length > 0}
+                                        onImportClick={() =>
                                             setIsImportDialogOpen(true)
                                         }
-                                    >
-                                        Import from Vercel
-                                    </Button>
+                                    />
                                 </div>
-                            )}
-
-                        {!isLoadingData &&
-                            !error &&
-                            projects &&
-                            projects.length > 0 && (
+                            ) : (
                                 <ul className="space-y-4">
                                     {projects.map((project) => (
                                         <ProjectListItem
                                             key={project.id}
                                             project={project}
+                                            isLastUpdated={
+                                                lastUpdatedProjectId ===
+                                                project.id
+                                            }
+                                            onAnimationComplete={() =>
+                                                setLastUpdatedProjectId(null)
+                                            }
                                             setProjectToEdit={setProjectToEdit}
                                             setProjectToDelete={
                                                 setProjectToDelete
@@ -365,7 +378,7 @@ export default function DashboardPage() {
                                         />
                                     ))}
                                 </ul>
-                            )}
+                            ))}
                     </CardContent>
                 </Card>
             </main>

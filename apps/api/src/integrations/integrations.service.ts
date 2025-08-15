@@ -434,6 +434,7 @@ export class IntegrationsService {
 
     return projectsWithGitUrl;
   }
+
   async createAvatarUploadUrl(userId: string, fileType: string) {
     const supabaseClient = this.supabase.getClient();
     const filePath = `${userId}/${Date.now()}`; // Уникальный путь для файла
@@ -443,6 +444,8 @@ export class IntegrationsService {
       .createSignedUploadUrl(filePath);
 
     if (error) {
+      // Добавляем больше контекста в лог ошибки
+      console.error('Supabase Storage Error:', error);
       throw new Error('Could not create upload URL');
     }
     return data;
