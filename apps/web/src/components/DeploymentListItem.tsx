@@ -3,7 +3,6 @@
 import {
     GitCommitHorizontal,
     GitBranch,
-    UserCircle,
     ExternalLink,
     RotateCcw,
     XCircle,
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/accordion";
 import { LogViewer } from "./LogViewer";
 import { Button } from "./ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 // Определяем тип для деплоя, чтобы TypeScript нам помогал
 export interface Deployment {
@@ -34,6 +34,7 @@ export interface Deployment {
     commit: string;
     message: string;
     creator: string;
+    creatorAvatarUrl?: string | null; // <-- поле для аватара
     createdAt: string;
     commitUrl?: string;
     url: string;
@@ -96,8 +97,19 @@ export function DeploymentListItem({
                                 {deployment.message}
                             </div>
                             <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-1">
-                                <div className="flex items-center gap-1">
-                                    <UserCircle className="h-3 w-3" />
+                                <div className="flex items-center gap-1.5">
+                                    <Avatar className="h-4 w-4">
+                                        <AvatarImage
+                                            src={
+                                                deployment.creatorAvatarUrl ??
+                                                undefined
+                                            }
+                                        />
+                                        <AvatarFallback className="text-[10px]">
+                                            {deployment.creator?.charAt(0) ||
+                                                "?"}
+                                        </AvatarFallback>
+                                    </Avatar>
                                     <span>{deployment.creator}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -111,6 +123,7 @@ export function DeploymentListItem({
                                         href={commitUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
                                         className="flex items-center gap-1 hover:underline"
                                     >
                                         <GitCommitHorizontal className="h-3 w-3" />

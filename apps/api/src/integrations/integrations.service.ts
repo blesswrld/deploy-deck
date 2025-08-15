@@ -18,6 +18,7 @@ export interface VercelDeployment {
   commit: string;
   message: string;
   creator: string;
+  creatorAvatarUrl?: string | null;
   createdAt: string;
   url: string;
 }
@@ -193,6 +194,45 @@ export class IntegrationsService {
     }
   }
 
+  async enrichDeploymentsWithAvatars(
+    userId: string,
+    deployments: VercelDeployment[],
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.githubAccessToken) return deployments; // Возвращаем как есть, если нет GitHub
+
+    const githubToken = this.encryptionService.decrypt(user.githubAccessToken);
+    const authHeaders = { Authorization: `Bearer ${githubToken}` };
+
+    // Создаем Map для кэширования аватарок, чтобы не запрашивать одного и того же юзера дважды
+    const avatarCache = new Map<string, string | null>();
+
+    const enrichedDeployments = await Promise.all(
+      deployments.map(async (dep) => {
+        const githubLogin = dep.creator; // Предполагаем, что creator === githubLogin
+        if (!githubLogin || avatarCache.has(githubLogin)) {
+          return { ...dep, creatorAvatarUrl: avatarCache.get(githubLogin) };
+        }
+
+        try {
+          const githubUserResponse = await axios.get(
+            `https://api.github.com/users/${githubLogin}`,
+            { headers: authHeaders },
+          );
+          const avatarUrl = githubUserResponse.data.avatar_url;
+          avatarCache.set(githubLogin, avatarUrl);
+          return { ...dep, creatorAvatarUrl: avatarUrl };
+        } catch (e) {
+          console.error(`Could not fetch avatar for ${githubLogin}`);
+          avatarCache.set(githubLogin, null); // Кэшируем неудачу, чтобы не повторять запрос
+          return { ...dep, creatorAvatarUrl: null };
+        }
+      }),
+    );
+
+    return enrichedDeployments;
+  }
+
   async getVercelDeploymentLogs(userId: string, deploymentId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -299,22 +339,16 @@ export class IntegrationsService {
       let shaToFetch = commitSha;
 
       if (!shaToFetch) {
-        try {
-          const repoResponse = await axios.get(
-            `https://api.github.com/repos/${repoFullName}`,
-            { headers: authHeaders },
-          );
-          const mainBranch = repoResponse.data.default_branch;
-          const commitsResponse = await axios.get(
-            `https://api.github.com/repos/${repoFullName}/commits?sha=${mainBranch}&per_page=1`,
-            { headers: authHeaders },
-          );
-          shaToFetch = commitsResponse.data[0]?.sha;
-        } catch (e) {
-          console.error(
-            `[GitHub] Could not fetch latest commit for ${repoFullName}, proceeding without SHA.`,
-          );
-        }
+        const repoResponse = await axios.get(
+          `https://api.github.com/repos/${repoFullName}`,
+          { headers: authHeaders },
+        );
+        const mainBranch = repoResponse.data.default_branch;
+        const commitsResponse = await axios.get(
+          `https://api.github.com/repos/${repoFullName}/commits?sha=${mainBranch}&per_page=1`,
+          { headers: authHeaders },
+        );
+        shaToFetch = commitsResponse.data[0]?.sha;
       }
 
       if (!shaToFetch) {
@@ -324,44 +358,35 @@ export class IntegrationsService {
           url: `https://github.com/${repoFullName}`,
         };
       }
-
-      let state = 'pending';
-      let commitPageUrl = `https://github.com/${repoFullName}/commit/${shaToFetch}`;
-
-      try {
-        const statusResponse = await axios.get(
-          `https://api.github.com/repos/${repoFullName}/commits/${shaToFetch}/status`,
-          { headers: authHeaders },
-        );
-        state = statusResponse.data.state;
-
-        // Запрашиваем URL коммита отдельно, чтобы он был всегда правильным
-        const commitResponse = await axios.get(
-          `https://api.github.com/repos/${repoFullName}/commits/${shaToFetch}`,
-          { headers: authHeaders },
-        );
-        commitPageUrl = commitResponse.data.html_url;
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 409) {
-          console.log(
-            `[GitHub] Status for commit ${shaToFetch} is not ready yet (409 Conflict). Treating as 'pending'.`,
-          );
-        } else {
-          throw error;
-        }
+      const checksResponse = await axios.get(
+        `https://api.github.com/repos/${repoFullName}/commits/${shaToFetch}/check-runs`,
+        { headers: authHeaders },
+      );
+      const commitResponse = await axios.get(
+        `https://api.github.com/repos/${repoFullName}/commits/${shaToFetch}`,
+        { headers: authHeaders },
+      );
+      const checksPageUrl = commitResponse.data.html_url;
+      const checkRuns = checksResponse.data.check_runs;
+      let conclusion: string | null = 'success';
+      if (checkRuns.length === 0) {
+        conclusion = 'success';
+      } else if (
+        checkRuns.some(
+          (run) =>
+            run.conclusion === 'failure' || run.conclusion === 'cancelled',
+        )
+      ) {
+        conclusion = 'failure';
       }
-
-      let conclusion: string | null = null;
-      if (state === 'success') conclusion = 'success';
-      if (state === 'failure' || state === 'error') conclusion = 'failure';
-
       let status = 'completed';
-      if (state === 'pending') status = 'in_progress';
-
-      return { status, conclusion, url: commitPageUrl };
+      if (checkRuns.some((run) => run.status !== 'completed')) {
+        status = 'in_progress';
+      }
+      return { status, conclusion, url: checksPageUrl };
     } catch (error) {
       console.error(
-        `[GitHub] Failed to get checks for project ${project.id} and commit ${commitSha}:`,
+        `[GitHub] Failed to get checks for project ${project.id}:`,
         error.message,
       );
       return null;
@@ -589,9 +614,10 @@ export class IntegrationsService {
         sha: c.sha,
         message: c.commit.message,
         author: c.commit.author.name,
+        authorAvatarUrl: c.author?.avatar_url || null,
         date: c.commit.author.date,
         url: c.html_url,
-        branch: mainBranch, // Упрощенно, считаем что все из main
+        branch: mainBranch,
       }));
     } catch (error) {
       console.error(
