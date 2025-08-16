@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { GeistMono } from "geist/font";
 import "./globals.css";
-// Импортируем Toaster, который является оберткой над Sonner
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { SocketProvider } from "@/contexts/SocketContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SocketProvider } from "@/contexts/SocketContext"; // <-- ИМПОРТ
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
-const inter = Inter({ subsets: ["latin"] });
+const geist = GeistMono; // <-- Просто присваиваем, не вызывая как функцию
 
 export const metadata: Metadata = {
     title: "Deploy-Deck",
@@ -22,8 +21,8 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" className="dark h-full" suppressHydrationWarning={true}>
-            {/* dark для темной темы по умолчанию */}
-            <body className={inter.className}>
+            {/* Применяем переменную шрифта */}
+            <body className={geist.variable}>
                 <AuthProvider>
                     <SocketProvider>
                         <TooltipProvider>
