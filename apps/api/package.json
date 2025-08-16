@@ -6,9 +6,9 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
+    "start": "node dist/main",
     "dev": "npm run start:dev",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -22,7 +22,8 @@
     "test:env": "dotenv -e .env -- node -e \"console.log('My DATABASE_URL is:', process.env.DATABASE_URL)\"",
     "prisma:migrate": "dotenv -e .env -- prisma migrate dev",
     "prisma:generate": "dotenv -e .env -- prisma generate",
-    "prisma:studio": "dotenv -e .env -- prisma studio"
+    "prisma:studio": "dotenv -e .env -- prisma studio",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
