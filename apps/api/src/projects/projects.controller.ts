@@ -7,6 +7,9 @@ import {
   Delete,
   UseGuards,
   Patch,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -26,8 +29,12 @@ export class ProjectsController {
   }
 
   @Get()
-  findAll(@GetUser() user: User) {
-    return this.projectsService.findAll(user.id);
+  findAll(
+    @GetUser() user: User,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(5), ParseIntPipe) limit: number,
+  ) {
+    return this.projectsService.findAll(user.id, page, limit);
   }
 
   @Get(':id')

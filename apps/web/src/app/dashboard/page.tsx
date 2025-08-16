@@ -6,7 +6,7 @@ import { useSocket } from "@/contexts/SocketContext";
 import { useApi } from "@/hooks/useApi";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -53,6 +53,8 @@ import { AppLoader } from "@/components/AppLoader";
 import { ProjectListItem } from "@/components/ProjectListItem";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { useProjectHotkeys } from "@/hooks/useProjectHotkeys";
+import { DashboardSummary } from "@/components/DashboardSummary";
+import { PaginationControls } from "@/components/PaginationControls"; // <-- ИМПОРТ ПАГИНАЦИИ
 
 interface Project {
     id: string;
@@ -69,25 +71,69 @@ interface UserProfile {
     hasGithubToken: boolean;
 }
 
+// ТИП ДЛЯ ОТВЕТА API
+interface PaginatedProjectsResponse {
+    data: Project[];
+    totalPages: number;
+    currentPage: number;
+    totalCount: number;
+}
+
 export default function DashboardPage() {
     const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
     const { setToken } = useAuth();
     const { api } = useApi();
 
+    // Состояние для текущей страницы
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Динамический ключ для SWR
+    const projectsSWRKey = isAuthenticated
+        ? `/projects?page=${currentPage}&limit=5`
+        : null;
+
     // --- ЕДИНСТВЕННЫЙ ИСТОЧНИК ДАННЫХ О ПРОЕКТАХ ---
     const fetcher = (url: string) => api(url);
     const {
-        data: projects,
-        projectsError,
-        isLoadingProjects,
+        data: paginatedResponse,
+        error: projectsError,
+        isLoading: isLoadingProjects,
+        // isValidating, // <-- ПОЛУЧАЕМ isValidating
         mutate,
-    } = useSWR<Project[]>(isAuthenticated ? "/projects" : null, fetcher, {
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
-        refreshWhenOffline: false,
-        refreshWhenHidden: false,
-        refreshInterval: 0,
+    } = useSWR<PaginatedProjectsResponse>(projectsSWRKey, fetcher, {
+        refreshInterval: 5000,
+        onError: (err) => {
+            toast.error(`Failed to fetch projects: ${err.message}`);
+        },
+        keepPreviousData: true,
     });
+
+    // Извлекаем данные из ответа
+    const projects = paginatedResponse?.data;
+    const totalPages = paginatedResponse?.totalPages || 1;
+
+    const { mutate: globalMutate } = useSWRConfig(); // <-- ПОЛУЧАЕМ ГЛОБАЛЬНЫЙ MUTATE
+
+    // ВЫЧИСЛЕНИЕ МЕТРИК
+    const summaryMetrics = {
+        totalProjects: paginatedResponse?.totalCount || 0,
+        deployingCount:
+            paginatedResponse?.data?.filter(
+                (p) =>
+                    p.deploymentStatus?.status === "BUILDING" ||
+                    p.deploymentStatus?.status === "QUEUED"
+            ).length || 0,
+        failedCount:
+            paginatedResponse?.data?.filter(
+                (p) =>
+                    p.deploymentStatus?.status === "ERROR" ||
+                    p.checksStatus?.conclusion === "failure"
+            ).length || 0,
+        readyCount:
+            paginatedResponse?.data?.filter(
+                (p) => p.deploymentStatus?.status === "READY"
+            ).length || 0,
+    };
 
     // === ЗАПРАШИВАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ===
     const { data: user, isLoading: isLoadingUser } = useSWR<UserProfile>(
@@ -134,13 +180,22 @@ export default function DashboardPage() {
                 console.log("Received project:updated event:", updatedProject);
                 setLastUpdatedProjectId(updatedProject.id);
 
-                // Используем самую свежую версию mutate из ref
-                mutateRef.current((currentProjects) => {
+                // 1. Оптимистично обновляем основной список
+                mutate((currentProjects) => {
                     if (!currentProjects) return [updatedProject];
                     return currentProjects.map((p) =>
                         p.id === updatedProject.id ? updatedProject : p
                     );
                 }, false);
+
+                // 2. ЯВНО ПЕРЕЗАГРУЖАЕМ КЭШ ДЛЯ ДОЧЕРНИХ КОМПОНЕНТОВ
+                // Это заставит дочерние компоненты обновиться, если они используют эти ключи
+                globalMutate(
+                    `/integrations/github/checks/${updatedProject.id}`
+                );
+                globalMutate(
+                    `/integrations/vercel/deployments/${updatedProject.id}`
+                );
 
                 toast.info(
                     `Status updated for project: ${updatedProject.name}`
@@ -154,7 +209,7 @@ export default function DashboardPage() {
                 socket.off("project:updated", handleProjectUpdate);
             };
         }
-    }, [socket]);
+    }, [socket, mutate, globalMutate]);
 
     const handleLogout = () => {
         setToken(null);
@@ -198,8 +253,17 @@ export default function DashboardPage() {
     return (
         <div className="container mx-auto  p-4 md:p-8">
             <header className="relative z-10 flex flex-wrap md:flex-nowrap justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">Your Dashboard</h1>
+                <h1 className="text-3xl font-bold">Dashboard</h1>
                 <div className="flex w-full justify-between items-center mt-3 md:mt-0 gap-2 md:w-auto md:justify-start md:gap-4">
+                    {/* ДОБАВЛЯЕМ ВИДЖЕТ СВОДКИ*/}
+                    {projects && (
+                        <DashboardSummary
+                            totalProjects={summaryMetrics.totalProjects}
+                            deployingCount={summaryMetrics.deployingCount}
+                            failedCount={summaryMetrics.failedCount}
+                            readyCount={summaryMetrics.readyCount}
+                        />
+                    )}
                     {projects && projects.length > 0 && (
                         <Button onClick={() => setIsImportDialogOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -352,7 +416,10 @@ export default function DashboardPage() {
                         </p>
                     </CardHeader>
                     <CardContent>
-                        {isLoadingData && !projects && <ProjectListSkeleton />}
+                        {/* Этот скелетон для самой первой загрузки */}
+                        {isLoadingProjects && !projects && (
+                            <ProjectListSkeleton />
+                        )}
 
                         {projectsError && !projects && (
                             <p className="text-red-500 text-center py-8">
@@ -374,33 +441,51 @@ export default function DashboardPage() {
                                     />
                                 </div>
                             ) : (
-                                <ul className="space-y-4">
-                                    {projects.map((project) => (
-                                        <ProjectListItem
-                                            key={project.id}
-                                            project={project}
-                                            isLastUpdated={
-                                                lastUpdatedProjectId ===
-                                                project.id
-                                            }
-                                            onAnimationComplete={() =>
-                                                setLastUpdatedProjectId(null)
-                                            }
-                                            setProjectToEdit={setProjectToEdit}
-                                            setProjectToDelete={
-                                                setProjectToDelete
-                                            }
-                                            setProjectToLink={setProjectToLink}
-                                            setIsDialogOpen={setIsDialogOpen}
-                                            onMouseEnter={() =>
-                                                setActiveProjectId(project.id)
-                                            }
-                                            onMouseLeave={() =>
-                                                setActiveProjectId(null)
-                                            }
-                                        />
-                                    ))}
-                                </ul>
+                                <>
+                                    <ul className="space-y-4">
+                                        {projects.map((project) => (
+                                            <ProjectListItem
+                                                key={project.id}
+                                                project={project}
+                                                isLastUpdated={
+                                                    lastUpdatedProjectId ===
+                                                    project.id
+                                                }
+                                                onAnimationComplete={() =>
+                                                    setLastUpdatedProjectId(
+                                                        null
+                                                    )
+                                                }
+                                                setProjectToEdit={
+                                                    setProjectToEdit
+                                                }
+                                                setProjectToDelete={
+                                                    setProjectToDelete
+                                                }
+                                                setProjectToLink={
+                                                    setProjectToLink
+                                                }
+                                                setIsDialogOpen={
+                                                    setIsDialogOpen
+                                                }
+                                                onMouseEnter={() =>
+                                                    setActiveProjectId(
+                                                        project.id
+                                                    )
+                                                }
+                                                onMouseLeave={() =>
+                                                    setActiveProjectId(null)
+                                                }
+                                            />
+                                        ))}
+                                    </ul>
+                                    {/*  Добавляем компонент пагинации */}
+                                    <PaginationControls
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={setCurrentPage}
+                                    />
+                                </>
                             ))}
                     </CardContent>
                 </Card>

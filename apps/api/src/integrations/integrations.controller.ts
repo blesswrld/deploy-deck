@@ -21,14 +21,12 @@ import { GetUser } from 'src/auth/get-user.decorator';
 import type { User } from '@prisma/client';
 import { ConnectVercelDto } from './dto/connect-vercel.dto';
 import type { Response } from 'express';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { EventsGateway } from 'src/events/events.gateway'; // <-- Импортируем наш Gateway
 
 @Controller('integrations')
 export class IntegrationsController {
   constructor(
     private readonly integrationsService: IntegrationsService,
-    private prisma: PrismaService,
     private readonly eventsGateway: EventsGateway,
   ) {}
 

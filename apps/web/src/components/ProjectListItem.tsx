@@ -56,6 +56,10 @@ export const ProjectListItem = ({
         visible: { y: 0, opacity: 1 },
     };
 
+    console.log(`--- RENDERING ProjectListItem for ${project.name} ---`, {
+        status: project.deploymentStatus?.status,
+    });
+
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (

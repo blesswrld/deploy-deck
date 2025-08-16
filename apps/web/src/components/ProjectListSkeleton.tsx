@@ -4,7 +4,7 @@ export function ProjectListSkeleton() {
     return (
         <div className="space-y-4">
             {/* Создаем массив из 3 элементов, чтобы отрендерить 3 скелетона */}
-            {Array.from({ length: 3 }).map((_, index) => (
+            {Array.from({ length: 5 }).map((_, index) => (
                 <div
                     key={index}
                     className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-4 gap-4"

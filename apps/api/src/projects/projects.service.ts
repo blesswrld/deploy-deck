@@ -52,15 +52,24 @@ export class ProjectsService {
     });
   }
 
-  async findAll(userId: string) {
-    // 1. ПОЛУЧАЕМ ПРОЕКТЫ ТОЛЬКО ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
-    const userProjects = await this.prisma.project.findMany({
-      where: { userId: userId },
-      include: { tags: true }, // <-- ВКЛЮЧАЕМ ТЕГИ
-      orderBy: { createdAt: 'desc' },
+  async findAll(userId: string, page: number = 1, limit: number = 5) {
+    const skip = (page - 1) * limit;
+
+    // 1. Получаем общее количество проектов для этого пользователя
+    const totalProjects = await this.prisma.project.count({
+      where: { userId },
     });
 
-    // 2. АСИНХРОННО ДЛЯ КАЖДОГО ПРОЕКТА ЗАПРАШИВАЕМ СТАТУСЫ
+    // 2. Получаем только нужную "порцию" проектов
+    const userProjects = await this.prisma.project.findMany({
+      where: { userId: userId },
+      include: { tags: true },
+      orderBy: { createdAt: 'desc' },
+      skip: skip,
+      take: limit,
+    });
+
+    // 3. АСИНХРОННО ДЛЯ КАЖДОГО ПРОЕКТА ЗАПРАШИВАЕМ СТАТУСЫ
     const projectsWithStatus = await Promise.all(
       userProjects.map(async (project) => {
         const deploymentStatus =
@@ -89,7 +98,13 @@ export class ProjectsService {
       }),
     );
 
-    return projectsWithStatus;
+    // 4. Возвращаем данные и мета-информацию о пагинации
+    return {
+      data: projectsWithStatus,
+      totalPages: Math.ceil(totalProjects / limit),
+      currentPage: page,
+      totalCount: totalProjects,
+    };
   }
 
   async findOne(id: string, userId: string) {
@@ -163,6 +178,16 @@ export class ProjectsService {
   async addTagToProject(projectId: string, tagId: string, userId: string) {
     // Проверка прав доступа
     await this.findOne(projectId, userId);
+
+    // Перед тем как привязать тег, проверяем, существует ли он вообще в базе.
+    const tagExists = await this.prisma.tag.findUnique({
+      where: { id: tagId },
+    });
+
+    if (!tagExists) {
+      throw new NotFoundException(`Tag with ID "${tagId}" not found.`);
+    }
+
     return this.prisma.project.update({
       where: { id: projectId },
       data: { tags: { connect: { id: tagId } } },
