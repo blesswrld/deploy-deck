@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCallback } from "react";
 
 // Базовый URL нашего API
-const API_BASE_URL = "http://localhost:3002";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const useApi = () => {
     const { token, setToken } = useAuth();

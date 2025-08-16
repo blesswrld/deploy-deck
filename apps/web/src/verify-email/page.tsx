@@ -4,11 +4,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { AppLoader } from "@/components/AppLoader";
+import { useApi } from "@/hooks/useApi";
 
 export default function VerifyEmailPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const token = searchParams.get("token");
+    const { api } = useApi();
 
     const [verificationStatus, setVerificationStatus] = useState<
         "loading" | "success" | "error"
@@ -24,12 +26,7 @@ export default function VerifyEmailPage() {
 
         const verifyToken = async () => {
             try {
-                const response = await fetch(
-                    `http://localhost:3002/auth/verify-email?token=${token}`
-                );
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.message);
+                await api(`/auth/verify-email?token=${token}`);
 
                 setVerificationStatus("success");
                 // Через 3 секунды перенаправляем на логин
@@ -41,7 +38,7 @@ export default function VerifyEmailPage() {
         };
 
         verifyToken();
-    }, [token, router]);
+    }, [token, router, api]);
 
     if (verificationStatus === "loading") {
         return <AppLoader variant="dots" text="Verifying your email..." />;

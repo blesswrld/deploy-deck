@@ -28,12 +28,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ButtonLoader } from "@/components/ButtonLoader";
 import Link from "next/link";
+import { useApi } from "@/hooks/useApi";
 
 export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [serverError, setServerError] = useState<string | null>(null); // Для общих ошибок сервера
     const router = useRouter();
     const { setToken } = useAuth();
+    const { api } = useApi();
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),
@@ -47,7 +49,7 @@ export default function LoginPage() {
         setIsLoading(true);
         setServerError(null); // Сбрасываем общую ошибку
         try {
-            const response = await fetch("http://localhost:3002/auth/login", {
+            const response = await api("/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(values),

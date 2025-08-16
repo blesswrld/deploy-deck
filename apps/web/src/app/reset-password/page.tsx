@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useApi } from "@/hooks/useApi";
 
 export default function ResetPasswordPage() {
     const searchParams = useSearchParams();
@@ -22,6 +23,7 @@ export default function ResetPasswordPage() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+    const { api } = useApi();
 
     useEffect(() => {
         const tokenFromUrl = searchParams.get("token");
@@ -43,14 +45,11 @@ export default function ResetPasswordPage() {
         setIsLoading(true);
         setError("");
         try {
-            const response = await fetch(
-                "http://localhost:3002/auth/reset-password",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ token, newPassword }),
-                }
-            );
+            const response = await api("/auth/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token, newPassword }),
+            });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
 

@@ -26,10 +26,12 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ButtonLoader } from "@/components/ButtonLoader";
+import { useApi } from "@/hooks/useApi";
 
 export default function SignupPage() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const { api } = useApi();
 
     const form = useForm<z.infer<typeof SignupSchema>>({
         resolver: zodResolver(SignupSchema),
@@ -43,7 +45,7 @@ export default function SignupPage() {
     const onSubmit = async (values: z.infer<typeof SignupSchema>) => {
         setIsLoading(true);
         try {
-            const response = await fetch("http://localhost:3002/auth/signup", {
+            const response = await api("/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(values),

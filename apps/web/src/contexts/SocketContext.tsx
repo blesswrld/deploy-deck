@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { useAuth } from "./AuthContext"; // Нам нужен токен для аутентификации
+import { useAuth } from "./AuthContext";
 
 const SocketContext = createContext<Socket | null>(null);
 
@@ -15,12 +15,18 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const [socket, setSocket] = useState<Socket | null>(null);
 
     useEffect(() => {
-        // Устанавливаем соединение, только если есть токен
+        // Получаем URL API из переменных окружения
+        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        if (!API_URL) {
+            console.error("Socket.IO: API URL is not configured.");
+            return;
+        }
+
         if (token) {
-            const newSocket = io("http://localhost:3002", {
-                // URL нашего NestJS API
+            const newSocket = io(API_URL, {
+                // <-- ИСПОЛЬЗУЕМ ПЕРЕМЕННУЮ
                 auth: {
-                    token: token, // Передаем JWT для аутентификации на бэкенде
+                    token: token,
                 },
             });
 
@@ -34,7 +40,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
             setSocket(newSocket);
 
-            // Очистка при размонтировании или смене токена
             return () => {
                 newSocket.disconnect();
             };
