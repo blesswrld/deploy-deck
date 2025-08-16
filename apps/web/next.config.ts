@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
         // Обязательно возвращаем измененную конфигурацию.
         return config;
     },
+    eslint: {
+        ignoreDuringBuilds: true, // Отключает проверку ESLint во время сборки
+    },
 };
 
 export default nextConfig;

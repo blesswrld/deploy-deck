@@ -14,8 +14,8 @@ export default function CheckEmailPage() {
                 </CardHeader>
                 <CardContent>
                     <p>
-                        We've sent a verification link to your email address.
-                        Please click the link to activate your account.
+                        We&apos;ve sent a verification link to your email
+                        address. Please click the link to activate your account.
                     </p>
                 </CardContent>
             </Card>
